@@ -146,6 +146,11 @@ Stomach_melt_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_melt_c
 
 #okoun
 Stomach_content_okoun <- Stomach_content_all[Species == "okoun"]
+size_lip_ok <- all_catch_lip[sp_speciesid == "okoun" & ct_sl > 0,.(Max = max(ct_sl),
+                                                                     Min = min(ct_sl)),
+                              by =.(year, ct_agegroup)]
 #bolen
 Stomach_content_bolen <- Stomach_content_all[Species == "bolen"]
-
+size_lip_bo <- all_catch_lip[sp_speciesid == "bolen" & ct_sl > 0,.(Max = max(ct_sl),
+                                                                   Min = min(ct_sl)),
+                             by =.(year, ct_agegroup)]
