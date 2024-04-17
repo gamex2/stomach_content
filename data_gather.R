@@ -119,7 +119,6 @@ Stomach_content_all <- Stomach_content_all %>%
                                   Koretra != 0 ~ 1,
                                   Jepice != 0 ~ 1,
                                   terr.hmyz != 0 ~ 1,
-                                  Nematode != 0 ~ 1,
                                   crayfish != 0 ~ 1,
                                   TRUE ~ 0)) #all other cases
 #Add zooplankton category
@@ -133,24 +132,165 @@ Stomach_content_all <- Stomach_content_all %>%
 #separating data####
 #candat
 Stomach_content_candat <- Stomach_content_all[Species == "candat"]
-size_lip_yoy <- all_catch_lip[sp_speciesid == "candat" & ct_sl > 0,.(Max = max(ct_sl),
-                                 Min = min(ct_sl)),
-                              by =.(year, ct_agegroup)]
+# size_lip_yoy <- all_catch_lip[sp_speciesid == "candat" & ct_sl > 1,.(Max = max(ct_sl),
+#                                  Min = min(ct_sl)),
+#                               by =.(year, ct_agegroup)]
 
 Stomach_content_candat <- Stomach_content_candat %>%
   mutate(size_class = case_when(SL <= 160 ~ "YOY",
-                                SL %in% 160:450 ~ "old",
-                                SL > 450 ~ "legal"))
-Stomach_melt_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_melt_candat_size$prey_sp))
+                                SL %in% 160:300 ~ "older<300",
+                                SL > 300 ~ "older>300"))
+Stomach_content_candat$size_class <- factor(Stomach_content_candat$size_class, levels = c("YOY", "older<300", "older>300"))
+# Stomach_content_candat$ct_agegroup <- dplyr::coalesce(Stomach_content_candat$ct_agegroup, Stomach_content_candat$size_class)
+
+#stomach content analises
+Stomach_content_candat_melt <- setDT(melt(Stomach_content_candat[, .(ct_catchid,Year, Species, Fish, invertebrate, zooplankton, size_class)], 
+                                       id.vars = c("ct_catchid", "Year", "Species", "size_class"), variable.name = "prey", value.name = "prey_n"))
+Stomach_content_candat_melt <- Stomach_content_candat_melt[!prey_n==0,]
+
+ggplot(Stomach_content_candat_melt, aes(x = as.factor(Year), y = prey_n, fill = prey)) +
+  geom_col(position = "stack") +
+  facet_wrap(~size_class, scales = "free") + 
+  labs(x="Year", y="prey n")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 26),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+#fish in the stomach
+Stomach_fish_candat <- Stomach_content_candat[Fish==1, ]
+Stomach_fish_candat <- Stomach_fish_candat %>% 
+  mutate(cannibal = case_when(candat != 0 ~ 1, #condition 1
+                              TRUE ~ 0)) #all other cases
+Stomach_fish_candat_melt <- setDT(melt(Stomach_fish_candat[, .(ct_catchid, SL, Year, Species, size_class, cannibal, candat, ouklej, 
+                                                               okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown)], 
+                                          id.vars = c("ct_catchid", "SL", "Year", "Species", "size_class", "cannibal"), 
+                                       variable.name = "prey", value.name = "prey_n"))
+Stomach_fish_candat_melt <- Stomach_fish_candat_melt[!prey_n==0,]
+Stomach_fish_candat_melt2 <- Stomach_fish_candat_melt
+Stomach_fish_candat_melt2$cannibal[Stomach_fish_candat_melt2$cannibal == 0] <- "no"
+Stomach_fish_candat_melt2$cannibal[Stomach_fish_candat_melt2$cannibal == 1] <- "yes"
+
+ggplot(Stomach_fish_candat_melt2, aes(x = as.factor(Year), y = prey_n, fill = forcats::fct_rev(cannibal))) +
+  geom_col(position = "stack") +
+  facet_wrap(~size_class, scales = "free") + 
+  labs(x="Year", y="fish n", fill="Cannibalism")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 26),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+fry_abundance <- setDT(readxl::read_xlsx(here::here('Stomach.content.all.xlsx'), sheet = "fry"))
+Stomach_fish_candat_melt2 <- merge(Stomach_fish_candat_melt2, fry_abundance[prey_sp == "candat"], by = "Year", all.x = T)
+
+max_first  <- max(Stomach_fish_candat_melt2$prey_n)   # Specify max of first y axis
+max_second <- max(Stomach_fish_candat_melt2$Fry_abundance) # Specify max of second y axis
+min_first  <- min(Stomach_fish_candat_melt2$prey_n)   # Specify min of first y axis
+min_second <- min(Stomach_fish_candat_melt2$Fry_abundance) # Specify min of second y axis
+
+# scale and shift variables calculated based on desired mins and maxes
+scale = (max_second - min_second)/(max_first - min_first)
+shift = min_first - min_second
+
+# Function to scale secondary axis
+scale_function <- function(x, scale, shift){
+  return ((x)*scale - shift)
+}
+
+# Function to scale secondary variable values
+inv_scale_function <- function(x, scale, shift){
+  return ((x + shift)/scale)
+}
+
+ggplot(Stomach_fish_candat_melt2, aes(x = as.factor(Year), y = prey_n, fill = forcats::fct_rev(cannibal))) +
+  geom_col(position = "stack") +
+  geom_line(data=Stomach_fish_candat_melt2, group=1, mapping=aes(x=as.factor(Year),y=Fry_abundance), linewidth = 3)+
+  facet_wrap(~size_class, scales = "free") + 
+  scale_y_continuous(name = "Fish n", 
+                     sec.axis = sec_axis(~.*(max_first/max_second), name = "Fry n per hectare"))+
+  labs(x="Year", fill = "cannibalism", linewidth = NULL)+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 26),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom")
+
+#fish size in the stomach
+Stomach_fish_candat_size <- setDT(melt(Stomach_fish_candat[, .(ct_catchid, SL, Year, Species, size_class, candat_1,candat_2,candat_3,candat_4, candat_5,
+                                                              candat_6, candat_7, candat_8, candat_9, ouklej_1, ouklej_2, ouklej_3, okoun_1,
+                                                              okoun_2, okoun_3, okoun_4, plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3,
+                                                              cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2,Unknown_1, Unknown_2,
+                                                              Unknown_3, Unknown_4, cannibal)], 
+                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class", "cannibal"), variable.name = "prey_sp", value.name = "prey_size"))
+Stomach_fish_candat_size <- Stomach_fish_candat_size[!prey_size == 0]
+Stomach_fish_candat_size[, ':='(ratio_prey = prey_size/SL)]
+
+Stomach_fish_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_fish_candat_size$prey_sp))
+
+ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.2)+
+  facet_wrap(~size_class) + 
+  labs(x="Year", y="Size ratio")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 20),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 26),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.2, aes(color = prey_sp, shape = prey_sp), size = 3)+
+  labs(x="Year", y="Size ratio", color="Prey sp", shape="Prey sp")+
+  facet_wrap(~size_class, scales = "free_x") + 
+  scale_shape_manual(values = rep(15:18, 2)) +
+  scale_color_manual(values=c(rep("blue3",1), rep("black",3), rep( "green4", 1), rep( "red", 3))) +
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 20),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 26),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 
 #okoun
 Stomach_content_okoun <- Stomach_content_all[Species == "okoun"]
-size_lip_ok <- all_catch_lip[sp_speciesid == "okoun" & ct_sl > 0,.(Max = max(ct_sl),
+size_lip_ok <- all_catch_lip[sp_speciesid == "okoun" & ct_sl > 1,.(Max = max(ct_sl),
                                                                      Min = min(ct_sl)),
                               by =.(year, ct_agegroup)]
 #bolen
 Stomach_content_bolen <- Stomach_content_all[Species == "bolen"]
-size_lip_bo <- all_catch_lip[sp_speciesid == "bolen" & ct_sl > 0,.(Max = max(ct_sl),
+size_lip_bo <- all_catch_lip[sp_speciesid == "bolen" & ct_sl > 1,.(Max = max(ct_sl),
                                                                    Min = min(ct_sl)),
                              by =.(year, ct_agegroup)]
+Stomach_content_bolen <- Stomach_content_bolen %>%
+  mutate(size_class = case_when(SL <= 85 ~ "YOY",
+                                SL > 85 ~ "older"))
+Stomach_content_bolen$ct_agegroup <- dplyr::coalesce(Stomach_content_bolen$ct_agegroup, Stomach_content_bolen$size_class)
+
