@@ -171,7 +171,7 @@ Stomach_fish_candat <- Stomach_fish_candat %>%
 
 Stomach_fish_candat <- merge(Stomach_fish_candat, fry_abundance[prey_sp == "candat"], by = "Year", all.x = T)
 set.seed(3333)
-summary(glm(data = Stomach_fish_candat, formula = cannibal ~ size_class+Year+Fry_abundance+Year, family = binomial(link = "logit")))
+summary(glm(data = Stomach_fish_candat, formula = cannibal ~ size_class+Year+Fry_abundance, family = binomial(link = "logit")))
 
 Stomach_fish_candat2 <- Stomach_fish_candat
 Stomach_fish_candat2$cannibal[Stomach_fish_candat2$cannibal == 0] <- "no"
@@ -426,8 +426,9 @@ Stomach_fish_okoun_size <- setDT(melt(Stomach_fish_okoun[, .(ct_catchid, SL, Yea
                                        id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class", "cannibal"), variable.name = "prey_sp", value.name = "prey_size"))
 Stomach_fish_okoun_size <- Stomach_fish_okoun_size[!prey_size == 0]
 Stomach_fish_okoun_size[, ':='(ratio_prey = prey_size/SL)]
-
 Stomach_fish_okoun_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_fish_okoun_size$prey_sp))
+summary(glm(data = Stomach_fish_okoun_size, formula = cannibal ~ size_class+Year+ratio_prey, family = binomial(link = "logit")))
+
 
 ggplot(Stomach_fish_okoun_size, aes(as.factor(Year), ratio_prey)) +
   geom_boxplot(outlier.shape = NA) +
