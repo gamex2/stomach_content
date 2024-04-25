@@ -115,6 +115,12 @@ Stomach_content_all <- Stomach_content_all %>%
                                 SL %in% 160:300 ~ "older<300",
                                 SL > 300 ~ "older>300"))
 Stomach_content_all$size_class <- factor(Stomach_content_all$size_class, levels = c("YOY", "older<300", "older>300"))
+Stomach_content_all <- Stomach_content_all %>%
+  mutate(decade = case_when(Year <= 1970 ~ "19's",
+                            Year > 2009 ~ "20's"))
+
+ggplot(Stomach_content_all, aes(x = decade)) + 
+  geom_histogram(stat="count")
 
 #fish in the stomach
 Stomach_fish_candat_melt <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Year, Species, size_class, candat, ouklej, 
@@ -122,16 +128,17 @@ Stomach_fish_candat_melt <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Y
                                           id.vars = c("ct_catchid", "SL", "Year", "Species", "size_class"), 
                                        variable.name = "prey", value.name = "prey_n"))
 Stomach_fish_candat_melt <- Stomach_fish_candat_melt[!prey_n==0,]
+Stomach_fish_candat_melt[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey_n)]
 
 set.seed(3333)
 summary(glm.nb(data = Stomach_fish_candat_melt, formula = prey_n ~ size_class+Year))
 
-ggplot(Stomach_fish_candat_melt, aes(x = as.factor(Year), y = prey_n)) +
+ggplot(Stomach_fish_candat_melt, aes(x = as.factor(Year), y = prey_n, fill = sp_grouped)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free") + 
-  labs(x="Year", y="Prey n", fill="Cannibalism")+
+  labs(x="Year", y="Prey n", fill="Prey sp")+
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 45, hjust = 1.05, vjust = 1.05),
+        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
         strip.text = element_text(size = 26),
         axis.title.x = element_text(size = 20),
@@ -147,16 +154,23 @@ Stomach_fish_candat_size <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Y
                                                               okoun_2, okoun_3, okoun_4, okoun_5, okoun_6, okoun_7, okoun_8, okoun_9, okoun_10, okoun_11, 
                                                               plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3, jezdik_4, jezdik_5, jezdik_6, jezdik_7,
                                                               cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2,Unknown_1, Unknown_2,
-                                                              Unknown_3, Unknown_4)], 
-                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class"), variable.name = "prey_sp", value.name = "prey_size"))
+                                                              Unknown_3, Unknown_4, decade)], 
+                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class", "decade"), variable.name = "prey_sp", value.name = "prey_size"))
 Stomach_fish_candat_size <- Stomach_fish_candat_size[!prey_size == 0]
 Stomach_fish_candat_size[, ':='(ratio_prey = prey_size/SL)]
 Stomach_fish_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_fish_candat_size$prey_sp))
+Stomach_fish_candat_size$prey_sp <- factor(Stomach_fish_candat_size$prey_sp, levels = c("candat", "okoun", "jezdik", "cejn", "cejnek", "kaprovitka", "ouklej", "plotice", "Unknown"))
+Stomach_fish_candat_size[, sp_grouped := fct_lump(f = prey_sp, prop = 0.05, w = prey_size)]
 
 set.seed(3333)
+summary(glm.nb(data = Stomach_fish_candat_size, formula = ratio_prey ~ size_class+decade))
+summary(glm.nb(data = Stomach_fish_candat_size, formula = prey_size ~ size_class+decade))
+
+set.seed(3333)
+summary(glm.nb(data = Stomach_fish_candat_size, formula = ratio_prey ~ size_class+Year))
 summary(glm.nb(data = Stomach_fish_candat_size, formula = prey_size ~ size_class+Year))
 
-ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
+ggplot(Stomach_fish_candat_size, aes(decade, ratio_prey)) +
   geom_boxplot(outlier.shape = NA) +
   geom_jitter(width = 0.2)+
   facet_wrap(~size_class) + 
@@ -174,13 +188,13 @@ ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
 
 ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
   geom_boxplot(outlier.shape = NA) +
-  geom_jitter(width = 0.2, aes(color = prey_sp, shape = prey_sp), size = 3)+
+  geom_jitter(width = 0.2, aes(color = sp_grouped, shape = sp_grouped), size = 3)+
   labs(x="Year", y="Size ratio", color="Prey sp", shape="Prey sp")+
   facet_wrap(~size_class, scales = "free_x") + 
-  scale_shape_manual(values = rep(15:18, 2)) +
-  scale_color_manual(values=c(rep("blue3",1), rep("black",3), rep( "green4", 1), rep( "red", 3))) +
+  scale_shape_manual(values = rep(15:18, )) +
+  scale_color_manual(values=c(rep("blue3",1), rep("black",1), rep("green4", 1), rep("red4", 1))) +
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
+        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
         strip.text = element_text(size = 20),
         axis.title.x = element_text(size = 20),
