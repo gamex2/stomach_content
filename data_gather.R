@@ -136,12 +136,21 @@ Stomach_fish_candat_melt$sp_taxonomicorder[Stomach_fish_candat_melt$prey == "oko
 Stomach_fish_candat_melt$sp_taxonomicorder[Stomach_fish_candat_melt$prey == "Unknown"] <- "Unknown"
 
 set.seed(3333)
-summary(glm.nb(data = Stomach_fish_candat_melt, formula = prey_n ~ size_class+Year+sp_taxonomicorder))
+m1 <- lm(data = Stomach_fish_candat_melt, formula = prey_n ~ sp_taxonomicorder+SL+Year+sp_taxonomicorder:SL+sp_taxonomicorder:Year)
+m2 <- glm(data = Stomach_fish_candat_melt, formula = prey_n ~ sp_taxonomicorder+SL+Year)
+anova(m2)
+summary(m2)
+with(summary(m2), 1 - deviance/null.deviance)
+anova(m1, m2)
+m3 <- lm(data = Stomach_fish_candat_melt, formula = prey_n ~ SL+Year)
+anova(m2, m3)
+
+summary(aov(data = Stomach_fish_candat_melt, formula = prey_n ~ (size_class+Year)*sp_taxonomicorder))
 
 ggplot(Stomach_fish_candat_melt, aes(x = as.factor(Year), y = prey_n, fill = sp_taxonomicorder)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free", ncol = 2) + 
-  labs(x="Year", y="Prey n", fill="Prey sp")+
+  labs(x="Year", y="Prey n", fill="Prey order")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
@@ -156,7 +165,7 @@ ggplot(Stomach_fish_candat_melt, aes(x = as.factor(Year), y = prey_n, fill = sp_
 ggplot(Stomach_fish_candat_melt, aes(x = decade, y = prey_n, fill = sp_taxonomicorder)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free") + 
-  labs(x="Year", y="Prey n", fill="Prey sp")+
+  labs(x="Year", y="Prey n", fill="Prey order")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
@@ -174,24 +183,32 @@ Stomach_fish_candat_size <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Y
                                                               candat_6, candat_7, candat_8, candat_9, ouklej_1, ouklej_2, ouklej_3, okoun_1,
                                                               okoun_2, okoun_3, okoun_4, okoun_5, okoun_6, okoun_7, okoun_8, okoun_9, okoun_10, okoun_11, 
                                                               plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3, jezdik_4, jezdik_5, jezdik_6, jezdik_7,
-                                                              cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2,Unknown_1, Unknown_2,
-                                                              Unknown_3, Unknown_4, decade)], 
+                                                              cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2, decade)], 
                                      id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class", "decade"), variable.name = "prey_sp", value.name = "prey_size"))
 Stomach_fish_candat_size <- Stomach_fish_candat_size[!prey_size == 0]
 Stomach_fish_candat_size[, ':='(ratio_prey = prey_size/SL)]
 Stomach_fish_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_fish_candat_size$prey_sp))
 Stomach_fish_candat_size$prey_sp <- factor(Stomach_fish_candat_size$prey_sp, levels = c("candat", "okoun", "jezdik", "cejn", "cejnek", "kaprovitka", "ouklej", "plotice", "Unknown"))
-Stomach_fish_candat_size[, sp_grouped := fct_lump(f = prey_sp, prop = 0.05, w = prey_size)]
 Stomach_fish_candat_size <- merge(Stomach_fish_candat_size, specs[,.(sp_speciesid,sp_taxonomicorder)], by.x = "prey_sp", by.y = "sp_speciesid", all.x = T)
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "kaprovitka"] <- "Cypriniformes"
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "okounovitá"] <- "Perciformes"
-Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "Unknown"] <- "Unknown"
-
+Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Perciformes"]
+Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cypriniformes"]
 
 set.seed(3333)
-summary(glm(data = Stomach_fish_candat_size, formula = prey_size ~ SL+decade+sp_taxonomicorder))
+summary(aov(data = Stomach_fish_candat_size, formula = prey_size ~ SL+decade+sp_taxonomicorder))
 summary(glm(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+decade+sp_taxonomicorder))
 summary(stats::aov(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+decade+sp_taxonomicorder))
+
+set.seed(3333)
+m1 <- aov(data = Stomach_cyprinid_size, formula = prey_size ~ SL + Year + SL:Year)
+m2 <- aov(data = Stomach_cyprinid_size, formula = prey_size ~ SL + Year)
+# with(summary(m1), 1 - deviance/null.deviance)
+anova(m1, m2)
+m3 <- aov(data = Stomach_cyprinid_size, formula = prey_size ~ SL)
+anova(m2, m3)
+anova(m2)
+summary(m1)
 
 set.seed(3333)
 summary(glm(data = Stomach_fish_candat_size, formula = prey_size ~ SL+Year+sp_taxonomicorder))
