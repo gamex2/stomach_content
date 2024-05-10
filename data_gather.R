@@ -162,7 +162,7 @@ ggplot(Stomach_fish_candat_melt, aes(x = as.factor(Year), y = prey_n, fill = sp_
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(Stomach_fish_candat_melt, aes(x = decade, y = prey_n, fill = sp_taxonomicorder)) +
+ggplot(Stomach_fish_candat_melt, aes(x = decade, y = (sum(prey_n)/length(unique(ct_catchid)))*100, fill = sp_taxonomicorder)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free") + 
   labs(x="Year", y="Prey n", fill="Prey order")+
@@ -192,30 +192,36 @@ Stomach_fish_candat_size$prey_sp <- factor(Stomach_fish_candat_size$prey_sp, lev
 Stomach_fish_candat_size <- merge(Stomach_fish_candat_size, specs[,.(sp_speciesid,sp_taxonomicorder)], by.x = "prey_sp", by.y = "sp_speciesid", all.x = T)
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "kaprovitka"] <- "Cypriniformes"
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "okounovitá"] <- "Perciformes"
-Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Perciformes"]
-Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cypriniformes"]
+Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Perciformes" & !size_class == "YOY"]
+Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cypriniformes" & !size_class == "YOY"]
 
 set.seed(3333)
-summary(aov(data = Stomach_fish_candat_size, formula = prey_size ~ SL+decade+sp_taxonomicorder))
-summary(glm(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+decade+sp_taxonomicorder))
+summary(lm(data = Stomach_cyprinid_size, formula = prey_size ~ SL + decade))
+summary(lm(data = Stomach_percid_size, formula = ratio_prey ~ SL + decade))
 summary(stats::aov(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+decade+sp_taxonomicorder))
 
+#cyprinid
 set.seed(3333)
-m1 <- aov(data = Stomach_cyprinid_size, formula = prey_size ~ SL + Year + SL:Year)
-m2 <- aov(data = Stomach_cyprinid_size, formula = prey_size ~ SL + Year)
+m1 <- lme4::lmer(data = Stomach_cyprinid_size, formula = ratio_prey ~ SL + Year + (1|ct_catchid), REML = FALSE)
+m2 <- lme4::lmer(data = Stomach_cyprinid_size, formula = ratio_prey ~ SL + (1|ct_catchid), REML = FALSE)
 # with(summary(m1), 1 - deviance/null.deviance)
 anova(m1, m2)
-m3 <- aov(data = Stomach_cyprinid_size, formula = prey_size ~ SL)
+m3 <- lme4::lmer(data = Stomach_cyprinid_size, formula = ratio_prey ~ SL + (1 + SL|ct_catchid), REML = FALSE)
 anova(m2, m3)
-anova(m2)
+car::Anova(m1)
 summary(m1)
 
+#percid
 set.seed(3333)
-summary(glm(data = Stomach_fish_candat_size, formula = prey_size ~ SL+Year+sp_taxonomicorder))
-summary(glm(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+Year+sp_taxonomicorder))
-summary(stats::aov(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+Year+sp_taxonomicorder))
-car::Anova(stats::aov(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+Year+sp_taxonomicorder), type="III")
-TukeyHSD(stats::aov(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL+Year+sp_taxonomicorder), "sp_taxonomicorder")
+m4 <- lme4::lmer(data = Stomach_percid_size, formula = ratio_prey ~ SL + Year + (1|ct_catchid)+(1|size_class), REML = FALSE)
+m5 <- lme4::lmer(data = Stomach_percid_size, formula = ratio_prey ~ SL + (1|ct_catchid)+(1|size_class), REML = FALSE)
+# with(summary(m1), 1 - deviance/null.deviance)
+anova(m4, m5)
+m6 <- lme4::lmer(data = Stomach_percid_size, formula = ratio_prey ~ Year + (1|ct_catchid), REML = FALSE)
+anova(m4, m6)
+car::Anova(m6)
+sjPlot::tab_model(m4)
+
 
 ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
   geom_boxplot(outlier.shape = NA) +
