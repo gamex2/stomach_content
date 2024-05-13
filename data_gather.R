@@ -357,3 +357,62 @@ ggplot(Stomach_fish_candat_size[!size_class == "YOY"& !sp_taxonomicorder == "Unk
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
+#authors comparison
+author <- setDT(readxl::read_xlsx(here::here('Author_ratio.xlsx')))
+Stomach_fish_candat_size$author <- "HBU"
+Stomach_fish_comparison_size <- rbind(author, Stomach_fish_candat_size[,.(SL,ratio_prey, sp_taxonomicorder, author, prey_sp, prey_size)])
+
+ggplot(Stomach_fish_comparison_size, aes(SL, ratio_prey)) +
+  geom_jitter(width = 0.2, aes(color = author))+
+  geom_smooth(method='lm', formula= y~x, aes(color = author, fill = author))+
+  scale_color_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1)))+
+  scale_fill_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1)))+
+  labs(x="SL (mm)", y="Prey ratio", fill = "Authors", color = "Authors")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+                      axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+                      axis.text.y = element_text(size = 28),
+                      strip.text = element_text(size = 20),
+                      axis.title.x = element_text(size = 20),
+                      axis.title.y = element_text(size = 26),
+                      legend.title = element_text(size=28),
+                      legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                      panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom")
+
+ggplot(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cypriniformes", "Perciformes")], aes(SL, ratio_prey)) +
+  geom_jitter(width = 0.2, aes(color = author))+
+  facet_wrap(~sp_taxonomicorder, scales = "free_y", ncol = 1) +
+  geom_smooth(method='lm', formula= y~x, aes(color = author, fill = author))+
+  scale_color_manual(values=c(rep("black",1), rep("green4",1), rep("purple4", 1)))+
+  scale_fill_manual(values=c(rep("black",1), rep("green4",1), rep("purple4", 1)))+
+  labs(x="SL (mm)", y="Prey ratio", fill = "Authors", color = "Authors")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+                      axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+                      axis.text.y = element_text(size = 28),
+                      strip.text = element_text(size = 20),
+                      axis.title.x = element_text(size = 20),
+                      axis.title.y = element_text(size = 26),
+                      legend.title = element_text(size=28),
+                      legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                      panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")
+
+ggplot(Stomach_fish_comparison_size[prey_sp %in% c("plotice", "jezdik", "candat", "okoun")], aes(SL, ratio_prey)) +
+  geom_jitter(width = 0.2, aes(color = author))+
+  facet_wrap(~prey_sp, scales = "free_y", ncol = 2) +
+  geom_smooth(method='lm', formula= y~x, aes(color = author, fill = author))+
+  scale_color_manual(values=c(rep("black",1), rep("green4",1)))+
+  scale_fill_manual(values=c(rep("black",1), rep("green4",1)))+
+  labs(x="SL (mm)", y="Prey ratio", fill = "Authors", color = "Authors")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+                      axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+                      axis.text.y = element_text(size = 28),
+                      strip.text = element_text(size = 20),
+                      axis.title.x = element_text(size = 20),
+                      axis.title.y = element_text(size = 26),
+                      legend.title = element_text(size=28),
+                     legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                      panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")
+
+#
