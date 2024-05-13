@@ -418,8 +418,9 @@ ggplot(Stomach_fish_comparison_size[prey_sp %in% c("plotice", "jezdik", "candat"
 #
 stats_sum_prey <- Stomach_fish_candat_melt[,.(fish_n = length(unique(ct_catchid)),
                                               prey_n = sum(prey_n)),
-                                              by = .(sp_grouped , size_class, Year, decade, sp_taxonomicorder)]
+                                              by = .(size_class, Year, decade, sp_taxonomicorder, prey)]
 stats_sum_prey[, ':='(prey100 = (prey_n/fish_n)*100)]
+stats_sum_prey[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey100)]
 stats_sum_prey
 
 ggplot(stats_sum_prey, aes(x = as.factor(Year), y = prey100, fill = sp_taxonomicorder)) +
@@ -441,6 +442,36 @@ ggplot(stats_sum_prey, aes(x = decade, y = prey100, fill = sp_taxonomicorder)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free") + 
   labs(x="Year", y="Prey n", fill="Prey order")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 26),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.title = element_text(size = 28),
+        legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+ggplot(stats_sum_prey, aes(x = as.factor(Year), y = prey100, fill = sp_grouped)) +
+  geom_col(position = "stack") +
+  facet_wrap(~size_class, scales = "free", ncol = 2) + 
+  labs(x="Year", y="Prey n", fill="Prey sp")+
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 26),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.title = element_text(size = 28),
+        legend.text = element_text(size = 26, face = "italic"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+ggplot(stats_sum_prey, aes(x = decade, y = prey100, fill = sp_grouped)) +
+  geom_col(position = "stack") +
+  facet_wrap(~size_class, scales = "free") + 
+  labs(x="Year", y="Prey n", fill="Prey sp")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
