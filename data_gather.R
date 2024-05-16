@@ -98,7 +98,7 @@ all_catch_lip <- merge(all_catch_lip, all_sampling[, .(sa_samplingid, year)], by
 #data stomach####
 Stomach_content_all <- setDT(readxl::read_xlsx(here::here('Stomach.content.all.xlsx'), sheet = "candat"))
 #Replace NA to 0
-Stomach_content_all[, 8:58][is.na(Stomach_content_all[, 8:58])] <- 0
+Stomach_content_all[, 8:59][is.na(Stomach_content_all[, 8:59])] <- 0
 #standardization of sex
 Stomach_content_all[["Sex"]][is.na(Stomach_content_all[["Sex"]])] <- "X"
 Stomach_content_all$Sex[Stomach_content_all$Sex == "Male"] <- "M"
@@ -119,7 +119,7 @@ Stomach_content_all <- Stomach_content_all %>%
   mutate(decade = case_when(Year <= 1970 ~ "19's",
                             Year > 2009 ~ "20's"))
 
-ggplot(Stomach_content_all, aes(x = Year)) + 
+ggplot(Stomach_content_all, aes(x = as.factor(Year))) + 
   geom_histogram(stat="count")
 
 
@@ -128,7 +128,7 @@ Stomach_fish_candat_melt <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Y
                                                                okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, decade)], 
                                           id.vars = c("ct_catchid", "SL", "Year", "Species", "size_class", "decade"), 
                                        variable.name = "prey", value.name = "prey_n"))
-Stomach_fish_candat_melt <- Stomach_fish_candat_melt[!prey_n==0,]
+# Stomach_fish_candat_melt <- Stomach_fish_candat_melt[!prey_n==0,]
 Stomach_fish_candat_melt[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey_n)]
 Stomach_fish_candat_melt <- merge(Stomach_fish_candat_melt, specs[,.(sp_speciesid,sp_taxonomicorder)], by.x = "prey", by.y = "sp_speciesid", all.x = T)
 Stomach_fish_candat_melt$sp_taxonomicorder[Stomach_fish_candat_melt$prey == "kaprovitka"] <- "Cypriniformes"
@@ -137,7 +137,7 @@ Stomach_fish_candat_melt$sp_taxonomicorder[Stomach_fish_candat_melt$prey == "Unk
 
 set.seed(3333)
 m1 <- lm(data = Stomach_fish_candat_melt, formula = prey_n ~ sp_taxonomicorder+SL+Year+sp_taxonomicorder:SL+sp_taxonomicorder:Year)
-m2 <- glm(data = Stomach_fish_candat_melt, formula = prey_n ~ sp_taxonomicorder+SL+Year)
+m2 <- lm(data = Stomach_fish_candat_melt, formula = prey_n ~ sp_taxonomicorder+SL+Year)
 anova(m2)
 summary(m2)
 with(summary(m2), 1 - deviance/null.deviance)
@@ -361,13 +361,71 @@ ggplot(Stomach_fish_candat_size[!size_class == "YOY"& !sp_taxonomicorder == "Unk
 author <- setDT(readxl::read_xlsx(here::here('Author_ratio.xlsx')))
 Stomach_fish_candat_size$author <- "HBU"
 Stomach_fish_comparison_size <- rbind(author, Stomach_fish_candat_size[,.(SL,ratio_prey, sp_taxonomicorder, author, prey_sp, prey_size)])
+Stomach_fish_comparison_size$author <- factor(Stomach_fish_comparison_size$author, levels = c("HBU", "Bousseba_2020", "Keskinen_2004", "Nolan_2018", "Dorner_2007"))
 
+set.seed(3333)
+m1 <- lm(data = Stomach_fish_comparison_size, formula = ratio_prey ~ SL + author + SL:author)
+m2 <- lme4::lmer(data = Stomach_fish_comparison_size, formula = ratio_prey ~ 1)
+# with(summary(m1), 1 - deviance/null.deviance)
+anova(m1, m2)
+car::Anova(m1)
+summary(m2)
+
+set.seed(3333)
+model <- caret::train(ratio_prey ~ author + SL, Stomach_fish_comparison_size,
+               method = "lm",
+               trControl = trainControl(method= "cv",
+                                        number = 10, 
+                                        verboseIter = T))
+summary(model)
+model
+
+set.seed(3333)
+model2 <- caret::train(ratio_prey ~ author, Stomach_fish_comparison_size,
+                      method = "lm",
+                      trControl = trainControl(method= "repeatedcv",
+                                               number = 10, 
+                                               verboseIter = T,
+                                               repeats = 10))
+summary(model2)
+model2
+anova(model$finalModel, model2$finalModel)
+car::Anova(model$finalModel)
+
+#sp analises
+Stomach_fish_comparison_size$ct_catchid <- paste0("Fish_", seq_len(2198))
+Stomach_fish_comparison_sp <- dcast(Stomach_fish_comparison_size[prey_sp %in% c("okoun") & author%in% c("HBU","Dorner_2007")],
+                                    author + ct_catchid + SL ~ prey_sp, value.var = "ratio_prey")
+Stomach_fish_comparison_sp$author <- factor(Stomach_fish_comparison_sp$author, levels = c("HBU","Dorner_2007"))
+
+set.seed(3333)
+model_sp <- caret::train(okoun ~ author + SL + author:SL, Stomach_fish_comparison_sp,
+                      method = "lm",
+                      trControl = trainControl(method= "repeatedcv",
+                                               number = 10, 
+                                               verboseIter = T,
+                                               repeats = 10))
+summary(model_sp)
+model_sp
+
+set.seed(3333)
+model_sp2 <- caret::train(okoun ~ author + SL, Stomach_fish_comparison_sp,
+                         method = "lm",
+                         trControl = trainControl(method= "repeatedcv",
+                                                  number = 10, 
+                                                  verboseIter = T,
+                                                  repeats = 10))
+summary(model_sp2)
+model_sp2
+anova(model_sp$finalModel, model_sp2$finalModel)
+
+#graphs
 ggplot(Stomach_fish_comparison_size, aes(SL, ratio_prey)) +
-  geom_jitter(width = 0.2, aes(color = author))+
-  geom_smooth(method='lm', formula= y~x, aes(color = author, fill = author))+
-  scale_color_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1)))+
-  scale_fill_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1)))+
-  labs(x="SL (mm)", y="Prey ratio", fill = "Authors", color = "Authors")+
+  geom_jitter(width = 0.2, aes(color = author)) +
+  geom_smooth(method='lm', formula= y~x, aes(color = author, fill = author)) +
+  scale_color_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1))) +
+  scale_fill_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1))) +
+  labs(x="SL (mm)", y="Prey ratio", fill = "Authors", color = "Authors") + 
   theme(plot.title = element_text(size = 32, face = "bold"),
                       axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
                       axis.text.y = element_text(size = 28),
@@ -375,9 +433,9 @@ ggplot(Stomach_fish_comparison_size, aes(SL, ratio_prey)) +
                       axis.title.x = element_text(size = 20),
                       axis.title.y = element_text(size = 26),
                       legend.title = element_text(size=28),
-                      legend.text = element_text(size = 26, face = "italic"))+
+                      legend.text = element_text(size = 26, face = "italic")) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-                      panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom")
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),legend.position="bottom")
 
 ggplot(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cypriniformes", "Perciformes")], aes(SL, ratio_prey)) +
   geom_jitter(width = 0.2, aes(color = author))+
@@ -415,18 +473,27 @@ ggplot(Stomach_fish_comparison_size[prey_sp %in% c("plotice", "jezdik", "candat"
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                       panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")
 
-#
+#prey per 100 fish
 stats_sum_prey <- Stomach_fish_candat_melt[,.(fish_n = length(unique(ct_catchid)),
                                               prey_n = sum(prey_n)),
-                                              by = .(size_class, Year, decade, sp_taxonomicorder, prey)]
+                                              by = .(size_class, Year, sp_taxonomicorder, prey)]
 stats_sum_prey[, ':='(prey100 = (prey_n/fish_n)*100)]
 stats_sum_prey[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey100)]
 stats_sum_prey
 
+dec_sum_prey <- Stomach_fish_candat_melt[,.(fish_n = length(unique(ct_catchid)),
+                                              prey_n = sum(prey_n)),
+                                           by = .(size_class, decade, sp_taxonomicorder, prey)]
+dec_sum_prey$yv[dec_sum_prey$decade == "19's"] <- 5
+dec_sum_prey$yv[dec_sum_prey$decade == "20's"] <- 9
+dec_sum_prey[, ':='(prey100 = (prey_n/fish_n)*100)]
+dec_sum_prey[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey100)]
+dec_sum_prey
+
 ggplot(stats_sum_prey, aes(x = as.factor(Year), y = prey100, fill = sp_taxonomicorder)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free", ncol = 2) + 
-  labs(x="Year", y="Prey n", fill="Prey order")+
+  labs(x="Year", y="Prey n per 100 Camdat", fill="Prey order")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
@@ -438,10 +505,10 @@ ggplot(stats_sum_prey, aes(x = as.factor(Year), y = prey100, fill = sp_taxonomic
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(stats_sum_prey, aes(x = decade, y = prey100, fill = sp_taxonomicorder)) +
+ggplot(dec_sum_prey, aes(x = decade, y = prey100, fill = sp_taxonomicorder)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free") + 
-  labs(x="Year", y="Prey n", fill="Prey order")+
+  labs(x="Decade", y="Prey n per 100 Camdat", fill="Prey order")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
@@ -453,10 +520,12 @@ ggplot(stats_sum_prey, aes(x = decade, y = prey100, fill = sp_taxonomicorder)) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(stats_sum_prey, aes(x = as.factor(Year), y = prey100, fill = sp_grouped)) +
-  geom_col(position = "stack") +
+ggplot(stats_sum_prey) +
+  geom_col(position = "stack", aes(x = as.factor(Year), y = prey100, fill = prey)) +
   facet_wrap(~size_class, scales = "free", ncol = 2) + 
-  labs(x="Year", y="Prey n", fill="Prey sp")+
+  scale_fill_manual(values=c(rep("red1",1), rep("black",1), rep("green1", 1), rep("blue1", 1), rep("purple1", 1),
+                              rep("green4",1), rep("grey",1), rep("red4", 1), rep("blue4", 1), rep("purple4", 1))) +
+  labs(x="Year", y="Prey n per 100 Camdat", fill="Prey sp")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
@@ -468,10 +537,12 @@ ggplot(stats_sum_prey, aes(x = as.factor(Year), y = prey100, fill = sp_grouped))
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(stats_sum_prey, aes(x = decade, y = prey100, fill = sp_grouped)) +
+ggplot(dec_sum_prey, aes(x = decade, y = prey100, fill = prey)) +
   geom_col(position = "stack") +
   facet_wrap(~size_class, scales = "free") + 
-  labs(x="Year", y="Prey n", fill="Prey sp")+
+  scale_fill_manual(values=c(rep("red1",1), rep("black",1), rep("green1", 1), rep("blue1", 1), rep("purple1", 1),
+                             rep("green4",1), rep("grey",1), rep("red4", 1), rep("blue4", 1), rep("purple4", 1))) +
+  labs(x="Decade", y="Prey n per 100 Camdat", fill="Prey sp")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
