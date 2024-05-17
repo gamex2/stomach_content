@@ -372,11 +372,12 @@ car::Anova(m1)
 summary(m2)
 
 set.seed(3333)
-model <- caret::train(ratio_prey ~ author + SL, Stomach_fish_comparison_size,
+model <- caret::train(ratio_prey ~ SL + author, Stomach_fish_comparison_size,
                method = "lm",
-               trControl = trainControl(method= "cv",
+               trControl = trainControl(method= "repeatedcv",
                                         number = 10, 
-                                        verboseIter = T))
+                                        verboseIter = T,
+                                        repeats = 10))
 summary(model)
 model
 
@@ -422,7 +423,7 @@ anova(model_sp$finalModel, model_sp2$finalModel)
 #graphs
 ggplot(Stomach_fish_comparison_size, aes(SL, ratio_prey)) +
   geom_jitter(width = 0.2, aes(color = author)) +
-  geom_smooth(method='lm', formula= y~x, aes(color = author, fill = author)) +
+  geom_smooth(method='loess', formula= y~x, aes(color = author, fill = author)) +
   scale_color_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1))) +
   scale_fill_manual(values=c(rep("red3",1), rep("black",1), rep("green4", 1), rep("blue1", 1), rep("purple4", 1))) +
   labs(x="SL (mm)", y="Prey ratio", fill = "Authors", color = "Authors") + 
