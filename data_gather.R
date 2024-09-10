@@ -119,7 +119,7 @@ Stomach_content_all <- Stomach_content_all %>%
   mutate(Dataset = case_when(Year <= 1970 ~ "19's",
                             Year > 2009 ~ "20's"))
 
-ggplot(Stomach_content_all, aes(x = as.factor(Year))) + 
+ggplot(Stomach_content_all, aes(x = SL)) + 
   geom_histogram(stat="count")
 
 
@@ -147,14 +147,18 @@ Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Perca fluviatilis"] <- "Perch"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Alburnus alburnus"] <- "Bleak"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Rutilus rutilus"] <- "Roach"
+
+ggplot(Stomach_fish_candat_melt, aes(x = prey_n)) + 
+  geom_histogram(stat="count")
+
 #prey n sp ####
 sum_sp_dec <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
                                           predator_n = uniqueN(ct_catchid)),
-                                         by =.(Dataset, sp_scientificname)]
-sum_sp_dec$predato_r <- sum_sp_dec$Sum/sum_sp_dec$predator_n
-ggplot(sum_sp_dec, aes(x = sp_scientificname, y = prey_n, fill = Dataset)) +
+                                         by =.(Dataset, sp_name)]
+sum_sp_dec$predato_r <- sum_sp_dec$prey_n/sum_sp_dec$predator_n
+ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
   geom_col(position="dodge") +
-  labs(x = "Species", y = "Total of prey", fill = "Dataset")+
+  labs(x = "Species", y = "Mean prey per predator", fill = "Dataset")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 45, hjust =1.1, vjust = 1.05, face = "italic"),
         axis.text.y = element_text(size = 28),
@@ -176,13 +180,14 @@ dfun <- function(object) {
   with(object,sum((weights * residuals^2)[weights > 0])/df.residual)
 }
 set.seed(3333)
-mzy <-glm(prey_n ~ Dataset + sp_scientificname, data = Stomach_fish_candat_melt[!sp_scientificname == "Unknown"], family = "quasipoisson")
+mzy <-glm(prey_n ~ Dataset + sp_scientificname, data = sum_sp_dec_y[!sp_scientificname == "Unknown"], family = "quasipoisson")
 summary(mzy)
 dfun(mzy)
+with(summary(mzy), 1 - deviance/null.deviance)
 
-dcast_sp_dec_y <- dcast(data = Stomach_fish_candat_melt, formula = Dataset + Year + ct_catchid ~ sp_scientificname, value.var = "prey_n")
+dcast_sp_dec_y <- dcast(data = sum_sp_dec_y, formula = Dataset + Year ~ sp_scientificname, value.var = "predato_r")
 set.seed(3333)
-mzy_zi_sp <- lapply(dcast_sp_dec_y[, c(4:12)], 
+mzy_zi_sp <- lapply(dcast_sp_dec_y[, c(2:11)], 
                           function(x) glm(formula = x ~ Dataset, 
                                                    data = dcast_sp_dec_y, family = "quasipoisson"))
 summary(mzy_zi_sp$`Abramis brama`)
@@ -197,8 +202,10 @@ summary(mzy_zi_sp$`Percid`)
 dfun(mzy_zi_sp$`Percid`)
 summary(mzy_zi_sp$`Gymnocephalus cernua`)
 dfun(mzy_zi_sp$`Gymnocephalus cernua`)
+with(summary(mzy_zi_sp$`Gymnocephalus cernua`), 1 - deviance/null.deviance)
 summary(mzy_zi_sp$`Perca fluviatilis`)
 dfun(mzy_zi_sp$`Perca fluviatilis`)
+with(summary(mzy_zi_sp$`Perca fluviatilis`), 1 - deviance/null.deviance)
 summary(mzy_zi_sp$`Rutilus rutilus`)
 dfun(mzy_zi_sp$`Rutilus rutilus`)
 summary(mzy_zi_sp$`Sander lucioperca`)
@@ -250,6 +257,10 @@ Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "okounovitá"] <- "Perciformes"
 Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "kaprovitka"] <- "Cypriniformes"
 Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "okounovitá"] <- "Perciformes"
+
+ggplot(Stomach_fish_candat_size, aes(x = prey_size)) + 
+  geom_histogram(stat="count")
+
 Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Perciformes" & !size_class == "YOY"]
 Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cypriniformes" & !size_class == "YOY"]
 Stomach_fish_candat_size$n_prey <- 1
@@ -410,10 +421,11 @@ ggplot(Stomach_fish_candat_size[!size_class == "YOY"& !sp_taxonomicorder == "Unk
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey)) +
-  geom_jitter(width = 0.2, aes(color = Dataset))+
+ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey, colour = Dataset)) +
+  geom_jitter(width = 0.2)+
   # facet_wrap(~size_class, scales = "free", ncol = 1) + 
-  geom_smooth(method='glm', formula= y~x, aes(color = Dataset, fill = Dataset), method.args = list(family = "quasipoisson"))+
+  geom_smooth(method='glm', formula= y~x, aes(fill = Dataset), method.args = list(family = "quasipoisson"))+
+ stat_poly_eq(use_label(c("eq", "R2"))) +
   labs(x="SL (mm)", y="PPR")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
