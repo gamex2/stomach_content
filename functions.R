@@ -1,5 +1,8 @@
 #Handy funcitons used for all converting of samplings for FISHECU
 
+dfun <- function(object) {
+  with(object,sum((weights * residuals^2)[weights > 0])/df.residual)
+}
 
 #fix name of column, print error if there are more than 1 column with pattern specified
 fixColumnName <- function(x, xpattern, new.name){

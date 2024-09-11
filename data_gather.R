@@ -152,9 +152,9 @@ ggplot(Stomach_fish_candat_melt, aes(x = prey_n)) +
   geom_histogram(stat="count")
 
 #prey n sp ####
-sum_sp_dec <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+sum_sp_dec <- Stomach_fish_candat_melt[!sp_scientificname == "Unknown",.(prey_n = sum(prey_n),
                                           predator_n = uniqueN(ct_catchid)),
-                                         by =.(Dataset, sp_name)]
+                                         by =.(Dataset, sp_scientificname)]
 sum_sp_dec$predato_r <- sum_sp_dec$prey_n/sum_sp_dec$predator_n
 ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
   geom_col(position="dodge") +
@@ -170,24 +170,38 @@ ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-sum_sp_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
-                                            predator_n = uniqueN(ct_catchid)),
-                                       by =.(Dataset, sp_scientificname, Year)]
-sum_sp_dec_y$predato_r <- sum_sp_dec_y$prey_n/sum_sp_dec_y$predator_n
-shapiro.test(sum_sp_dec_y$predato_r)
-hist(sum_sp_dec_y$predato_r, breaks = 100)
-dfun <- function(object) {
-  with(object,sum((weights * residuals^2)[weights > 0])/df.residual)
-}
+sum_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+                                            predator_n = uniqueN(ct_catchid), 
+                                            predato_r = sum(prey_n)/uniqueN(ct_catchid)),
+                                       by =.(Dataset, Year)]
+skewness(sum_dec_y$predato_r)
+shapiro.test(sum_dec_y$predato_r)
+hist(sum_dec_y$predato_r, breaks = 100)
 set.seed(3333)
-mzy <-glm(prey_n ~ Dataset + sp_scientificname, data = sum_sp_dec_y[!sp_scientificname == "Unknown"], family = "quasipoisson")
+mzyf <- glm(predato_r ~ Dataset, data = sum_dec_y)
+mzy <-glm(predato_r ~ Year + Dataset, data = sum_dec_y)
+anova(mzy, mzyf)
 summary(mzy)
+summary(mzyf)
+dfun(mzyf)
 dfun(mzy)
 with(summary(mzy), 1 - deviance/null.deviance)
+with(summary(mzyf), 1 - deviance/null.deviance)
 
+sum_sp_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+                                            predator_n = uniqueN(ct_catchid), 
+                                            predato_r = sum(prey_n)/uniqueN(ct_catchid)),
+                                         by =.(Dataset, Year, sp_scientificname)]
+shapiro.test(sum_sp_dec_y$predato_r)
+skewness(sum_sp_dec_y$predato_r)
+summary(glm(predato_r ~ Dataset + sp_scientificname, data = sum_sp_dec_y, family = "quasipoisson"))
 dcast_sp_dec_y <- dcast(data = sum_sp_dec_y, formula = Dataset + Year ~ sp_scientificname, value.var = "predato_r")
+
+lapply(dcast_sp_dec_y[, c(3:11)],shapiro.test)
+lapply(dcast_sp_dec_y[, c(3:11)],skewness)
+
 set.seed(3333)
-mzy_zi_sp <- lapply(dcast_sp_dec_y[, c(2:11)], 
+mzy_zi_sp <- lapply(dcast_sp_dec_y[, c(3:11)], 
                           function(x) glm(formula = x ~ Dataset, 
                                                    data = dcast_sp_dec_y, family = "quasipoisson"))
 summary(mzy_zi_sp$`Abramis brama`)
