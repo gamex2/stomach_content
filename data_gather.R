@@ -140,7 +140,7 @@ Stomach_fish_candat_melt$sp_scientificname[Stomach_fish_candat_melt$prey == "Unk
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$prey == "kaprovitka"] <- "Cyprinid"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$prey == "Unknown"] <- "Unknown"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$prey == "okounovitá"] <- "Percid"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Sander lucioperca"] <- "Pike"
+Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Sander lucioperca"] <- "Pikeperch"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Abramis brama"] <- "Bream"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Blicca bjoerkna"] <- "Silver bream"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Gymnocephalus cernua"] <- "Ruffe"
@@ -154,7 +154,7 @@ ggplot(Stomach_fish_candat_melt, aes(x = prey_n)) +
 #prey n sp ####
 sum_sp_dec <- Stomach_fish_candat_melt[!sp_scientificname == "Unknown",.(prey_n = sum(prey_n),
                                           predator_n = uniqueN(ct_catchid)),
-                                         by =.(Dataset, sp_scientificname)]
+                                         by =.(Dataset, sp_name)]
 sum_sp_dec$predato_r <- sum_sp_dec$prey_n/sum_sp_dec$predator_n
 ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
   geom_col(position="dodge") +
@@ -173,12 +173,16 @@ ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
 sum_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
                                             predator_n = uniqueN(ct_catchid), 
                                             predato_r = sum(prey_n)/uniqueN(ct_catchid)),
-                                       by =.(Dataset, Year)]
+                                       by =.(Dataset)]
+
+ggplot(sum_dec_y, aes(x = predato_r)) + 
+  geom_histogram(stat="count")
+
 skewness(sum_dec_y$predato_r)
 shapiro.test(sum_dec_y$predato_r)
 hist(sum_dec_y$predato_r, breaks = 100)
 set.seed(3333)
-mzyf <- glm(predato_r ~ Dataset, data = sum_dec_y)
+mzyf <- glm(predato_r ~ Year, data = sum_dec_y)
 mzy <-glm(predato_r ~ Year + Dataset, data = sum_dec_y)
 anova(mzy, mzyf)
 summary(mzy)
@@ -194,13 +198,17 @@ sum_sp_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
                                          by =.(Dataset, Year, sp_scientificname)]
 shapiro.test(sum_sp_dec_y$predato_r)
 skewness(sum_sp_dec_y$predato_r)
-summary(glm(predato_r ~ Dataset + sp_scientificname, data = sum_sp_dec_y, family = "quasipoisson"))
+mzy_qp_sp <- glm(predato_r ~ Dataset + sp_scientificname, data = sum_sp_dec_y[!sp_scientificname == "Unknown"], family = "quasipoisson")
+summary(mzy_qp_sp)
+dfun(mzy_qp_sp)
+with(summary(mzy_qp_sp), 1 - deviance/null.deviance)
+
 dcast_sp_dec_y <- dcast(data = sum_sp_dec_y, formula = Dataset + Year ~ sp_scientificname, value.var = "predato_r")
 
 lapply(dcast_sp_dec_y[, c(3:11)],shapiro.test)
 lapply(dcast_sp_dec_y[, c(3:11)],skewness)
 
-set.seed(3333)
+set.seed(9999)
 mzy_zi_sp <- lapply(dcast_sp_dec_y[, c(3:11)], 
                           function(x) glm(formula = x ~ Dataset, 
                                                    data = dcast_sp_dec_y, family = "quasipoisson"))
@@ -224,6 +232,7 @@ summary(mzy_zi_sp$`Rutilus rutilus`)
 dfun(mzy_zi_sp$`Rutilus rutilus`)
 summary(mzy_zi_sp$`Sander lucioperca`)
 dfun(mzy_zi_sp$`Sander lucioperca`)
+with(summary(mzy_zi_sp$`Sander lucioperca`), 1 - deviance/null.deviance)
 
 #prey mean ####
 sum_n_dec <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
@@ -231,8 +240,12 @@ sum_n_dec <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
                                        by =.(Year, Dataset)]
 sum_n_dec$predato_r <- sum_n_dec$prey_n/sum_n_dec$predator_n
 
-ggplot(sum_n_dec, aes(x = Dataset, y = predato_r, fill = Dataset)) +
-  geom_col() +
+ggplot(sum_n_dec) +
+  geom_col(aes(x = as.factor(Year), y = predato_r, fill = Dataset)) +
+   annotate("segment", x = as.factor(1966), xend = as.factor(1970), y = 1.664368, yend = 1.664368,
+         col = "black", linewidth = 1)+
+  annotate("segment", x = as.factor(2010), xend = as.factor(2022), y = 1.163636, yend = 1.163636,
+           col = "black", linewidth = 1)+
   labs(x="Year", y="Mean prey N per Pikeperch", fill = "Dataset")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
