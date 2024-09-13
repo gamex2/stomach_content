@@ -234,6 +234,34 @@ summary(mzy_zi_sp$`Sander lucioperca`)
 dfun(mzy_zi_sp$`Sander lucioperca`)
 with(summary(mzy_zi_sp$`Sander lucioperca`), 1 - deviance/null.deviance)
 
+#family analises
+sum_or_dec_y <- Stomach_fish_candat_melt[!sp_taxonomicorder == "Unknown",.(prey_n = sum(prey_n),
+                                            predator_n = uniqueN(ct_catchid), 
+                                            predato_r = sum(prey_n)/uniqueN(ct_catchid)),
+                                         by =.(Dataset, sp_taxonomicorder)]
+shapiro.test(sum_or_dec_y$predato_r)
+skewness(sum_or_dec_y$predato_r)
+mzy_qp_or <- glm(predato_r ~ Dataset + sp_taxonomicorder, data = sum_or_dec_y, family = "quasipoisson")
+summary(mzy_qp_or)
+dfun(mzy_qp_or)
+with(summary(mzy_qp_or), 1 - deviance/null.deviance)
+
+dcast_or_dec_y <- dcast(data = sum_or_dec_y, formula = Dataset + Year ~ sp_taxonomicorder, value.var = "predato_r")
+
+lapply(dcast_or_dec_y[, c(3:4)],shapiro.test)
+lapply(dcast_or_dec_y[, c(3:4)],skewness)
+
+set.seed(9999)
+mzy_zi_sp <- lapply(dcast_or_dec_y[, c(3:4)], 
+                    function(x) glm(formula = x ~ Dataset, 
+                                    data = dcast_or_dec_y, family = "quasipoisson"))
+summary(mzy_zi_sp$Cypriniformes)
+dfun(mzy_zi_sp$Cypriniformes)
+with(summary(mzy_zi_sp$Cypriniformes), 1 - deviance/null.deviance)
+summary(mzy_zi_sp$Perciformes)
+dfun(mzy_zi_sp$Perciformes)
+with(summary(mzy_zi_sp$Perciformes), 1 - deviance/null.deviance)
+
 #prey mean ####
 sum_n_dec <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
                                          predator_n = uniqueN(ct_catchid)),
@@ -269,27 +297,25 @@ mz1 <-zeroinfl(prey_n ~ size_class+Dataset + size_class:Dataset, data = Stomach_
 summary(mz1)
 
 #fish size in the stomach
-Stomach_fish_candat_size <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Year, Species, size_class, candat_1,candat_2,candat_3,candat_4, candat_5,
+Stomach_fish_candat_size <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Year, Species, candat_1,candat_2,candat_3,candat_4, candat_5,
                                                               candat_6, candat_7, candat_8, candat_9, ouklej_1, ouklej_2, ouklej_3, okoun_1,
                                                               okoun_2, okoun_3, okoun_4, okoun_5, okoun_6, okoun_7, okoun_8, okoun_9, okoun_10, okoun_11, 
                                                               plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3, jezdik_4, jezdik_5, jezdik_6, jezdik_7,
-                                                              cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2, okounovitá, Dataset)], 
-                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class", "Dataset"), variable.name = "prey_sp", value.name = "prey_size"))
+                                                              cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2, kaprovitka_3, Dataset)], 
+                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "Dataset"), variable.name = "prey_sp", value.name = "prey_size"))
 Stomach_fish_candat_size <- Stomach_fish_candat_size[!prey_size == 0]
 Stomach_fish_candat_size[, ':='(ratio_prey = prey_size/SL)]
 Stomach_fish_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_fish_candat_size$prey_sp))
-Stomach_fish_candat_size$prey_sp <- factor(Stomach_fish_candat_size$prey_sp, levels = c("candat", "okoun", "jezdik", "cejn", "cejnek", "kaprovitka", "okounovitá", "ouklej", "plotice", "Unknown"))
+Stomach_fish_candat_size$prey_sp <- factor(Stomach_fish_candat_size$prey_sp, levels = c("candat", "okoun", "jezdik", "cejn", "cejnek", "kaprovitka", "ouklej", "plotice", "Unknown"))
 Stomach_fish_candat_size <- merge(Stomach_fish_candat_size, specs[,.(sp_speciesid,sp_taxonomicorder, sp_scientificname)], by.x = "prey_sp", by.y = "sp_speciesid", all.x = T)
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "kaprovitka"] <- "Cypriniformes"
-Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "okounovitá"] <- "Perciformes"
 Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "kaprovitka"] <- "Cypriniformes"
-Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "okounovitá"] <- "Perciformes"
 
 ggplot(Stomach_fish_candat_size, aes(x = prey_size)) + 
   geom_histogram(stat="count")
 
-Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Perciformes" & !size_class == "YOY"]
-Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cypriniformes" & !size_class == "YOY"]
+Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Perciformes"]
+Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cypriniformes"]
 Stomach_fish_candat_size$n_prey <- 1
 sum_size_dec <- Stomach_fish_candat_size[!prey_size == 0,.(Mean = round(mean(prey_size, na.rm = T), 2),
                                              SE = round(plotrix::std.error(prey_size), 2),
