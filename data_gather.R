@@ -200,7 +200,6 @@ teste <- sum_sp_dec_y[,.(predato_m = mean(predato_r),
                       by =.(Dataset, sp_name)]
 
 
-<<<<<<< HEAD
 lapply(dcast_sp_dec_y[, c(3:11)],shapiro.test)
 lapply(dcast_sp_dec_y[, c(3:11)],skewness)
 
@@ -405,11 +404,6 @@ sum_size_dec <- Stomach_fish_candat_size[!prey_size == 0,.(Mean = round(mean(pre
 sum_size_dec
 sum_size_dec[is.na(sum_size_dec)] <- 0
 # write.xlsx(sum_size_dec, here::here('sum_size_dec.xlsx'))
-sum_size_d <- Stomach_fish_candat_size[,.(prey_n = sum(n_prey),
-                                          predator_n = length(unique(ct_catchid))),
-                                       by =.(Dataset)]
-sum_size_d$mean_p <- sum_size_d$prey_n/sum_size_d$predator_n
-
 #table?
 # Stomach_fish_candat_size$n_prey <- 1
 # sum_size_dec <- Stomach_fish_candat_size[,.(Mean = round(mean(prey_size, na.rm = T), 2),
@@ -440,7 +434,7 @@ ggplot(Stomach_percid_size, aes(x = ratio_prey)) +
   geom_histogram()
 
 set.seed(3333)
-summary(glm(data = Stomach_cyprinid_size, formula = ratio_prey ~ SL * Dataset))
+summary(glm.nb(data = Stomach_percid_size, formula = ratio_prey ~ SL * Dataset))
 summary(glm(data = Stomach_percid_size, formula = ratio_prey ~ SL * Dataset, family = "quasipoisson"))
 
 #cyprinid
@@ -518,7 +512,7 @@ ggplot(Stomach_fish_candat_size, aes(Dataset, ratio_prey)) +
   geom_boxplot(outlier.shape = NA) +
   geom_jitter(width = 0.2, aes(color = sp_taxonomicorder, shape = sp_taxonomicorder), size = 3)+
   labs(x="Year", y="Size ratio", color="Prey order", shape="Prey order")+
-  facet_wrap(~size_class, scales = "free_x") + 
+  # facet_wrap(~size_class, scales = "free_x") + 
   scale_shape_manual(values = rep(15:18, )) +
   scale_color_manual(values=c(rep("blue3",1), rep("black",1), rep("green4", 1))) +
   theme(plot.title = element_text(size = 32, face = "bold"),
@@ -565,10 +559,10 @@ ggplot(Stomach_fish_candat_size[!size_class == "YOY"& prey_sp %in% c("okoun", "j
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 #order
-ggplot(Stomach_fish_candat_size[!size_class == "YOY"& !sp_taxonomicorder == "Unknown"], aes(SL, prey_size)) +
+ggplot(Stomach_fish_candat_size[!sp_taxonomicorder == "Unknown"], aes(SL, ratio_prey)) +
   geom_jitter(width = 0.2, aes(color = Dataset))+
-  facet_wrap(~prey_sp, scales = "free_y", ncol = 1) + 
-  geom_smooth(method='lm', formula= y~x, aes(color = Dataset, fill = Dataset))+
+  facet_wrap(~sp_taxonomicorder, scales = "free_y", ncol = 1) + 
+  geom_smooth(method='glm', formula= y~x, aes(color = Dataset, fill = Dataset), method.args = list(family = "quasipoisson"))+
   labs(x="SL (mm)", y="Prey size")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
