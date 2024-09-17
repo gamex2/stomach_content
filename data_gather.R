@@ -40,7 +40,7 @@ all_gill_sto <- merge(all_gill_sto, all_sampling[, .(sa_samplingid, sa_date_star
 #                                                                   ;", sep = "")))
 # write.xlsx(catches_gillnet, here::here('catches_gillnet.xlsx'))
 catches_gillnet <- setDT(readxl::read_xlsx(here::here('catches_gillnet.xlsx')))
-
+view(catches_gillnet[sp_speciesid == "okoun"])
 
 #beachsein####
 # all_seining <- data.table(dbGetQuery(conn = con, statement = "SELECT *
@@ -122,11 +122,17 @@ Stomach_content_all <- Stomach_content_all %>%
 ggplot(Stomach_content_all, aes(x = SL)) + 
   geom_histogram(stat="count")
 
-
+with_fish <- subset(Stomach_content_all, rowSums(Stomach_content_all[8:58]) != 0)
+with_fish <- Stomach_content_all[8:58] %>% 
+  filter(rowSums(across(where(is.numeric)))!=0)
+with_fish <- Stomach_content_all %>% filter(!(!rowSums(`[`(.,,8:59))))
+with_fish$stomach_c <- 1
+Stomach_content_all <- merge(Stomach_content_all, with_fish[,.(ct_catchid, stomach_c)], all.x = T)
+Stomach_content_all[is.na(Stomach_content_all)] <- 0
 #fish in the stomach
 Stomach_fish_candat_melt <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Year, size_class, candat, ouklej, 
-                                                               okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Dataset)], 
-                                          id.vars = c("ct_catchid", "SL", "Year", "size_class", "Dataset"), 
+                                                               okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Dataset, stomach_c)], 
+                                          id.vars = c("ct_catchid", "SL", "Year", "size_class", "Dataset", "stomach_c"), 
                                        variable.name = "prey", value.name = "prey_n"))
 # Stomach_fish_candat_melt <- Stomach_fish_candat_melt[!prey_n==0,]
 # Stomach_fish_candat_melt[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey_n)]
@@ -146,14 +152,17 @@ Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Perca fluviatilis"] <- "Perch"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Alburnus alburnus"] <- "Bleak"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Rutilus rutilus"] <- "Roach"
-
+Stomach_fish_candat_melt <- Stomach_fish_candat_melt %>%
+  mutate(size_class = case_when(SL <= 160 ~ "YOY",
+                                SL %in% 160:300 ~ "older<300",
+                                SL > 300 ~ "older>300"))
 ggplot(Stomach_fish_candat_melt, aes(x = prey_n)) + 
   geom_histogram(stat="count")
 
 #prey n sp ####
-sum_sp_dec <- Stomach_fish_candat_melt[!sp_scientificname == "Unknown",.(prey_n = sum(prey_n),
-                                          predator_n = uniqueN(ct_catchid)),
-                                         by =.(Dataset, sp_name)]
+sum_sp_dec <- Stomach_content_all[stomach_c == 0,.(predator_n = uniqueN(ct_catchid)),
+                                         by =.(Year, size_class)]
+
 sum_sp_dec$predato_r <- sum_sp_dec$prey_n/sum_sp_dec$predator_n
 ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
   geom_col(position="dodge") +
@@ -172,9 +181,9 @@ ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
 sum_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
                                             predator_n = uniqueN(ct_catchid), 
                                             predato_r = sum(prey_n)/uniqueN(ct_catchid)),
-                                       by =.(Dataset)]
+                                       by =.(Year, prey, size_class)]
 
-ggplot(sum_dec_y, aes(x = predato_r)) + 
+ggplot(sum_dec_y, aes(x = predato_r)) + ggploYeart(sum_dec_y, aes(x = predato_r)) + 
   geom_histogram(stat="count")
 
 skewness(sum_dec_y$predato_r)
@@ -388,7 +397,10 @@ Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "
 Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "kaprovitka"] <- "Cypriniformes"
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "Unknown"] <- "Unknown"
 Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "Unknown"] <- "Unknown"
-
+Stomach_fish_candat_size <- Stomach_fish_candat_size %>%
+  mutate(size_class = case_when(SL <= 160 ~ "YOY",
+                                SL %in% 160:300 ~ "older<300",
+                                SL > 300 ~ "older>300"))
 ggplot(Stomach_fish_candat_size, aes(x = prey_size)) + 
   geom_histogram(stat="count")
 
@@ -400,8 +412,9 @@ sum_size_dec <- Stomach_fish_candat_size[!prey_size == 0,.(Mean = round(mean(pre
                                              Max = max(prey_size),
                                              Min = min(prey_size),
                                             N = length(prey_size)),
-                               by =.(Dataset, sp_scientificname)]
+                               by =.(size_class, prey_sp)]
 sum_size_dec
+write.xlsx(sum_size_dec, here::here('jan_table.xlsx'))
 sum_size_dec[is.na(sum_size_dec)] <- 0
 # write.xlsx(sum_size_dec, here::here('sum_size_dec.xlsx'))
 #table?

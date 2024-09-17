@@ -277,4 +277,143 @@
 #                   ncol = 2, nrow = 2,
 #                   common.legend = TRUE, legend = "bottom")
 
+#data stomach####
+Stomach_content_sp <- setDT(readxl::read_xlsx(here::here('Stomach.content.all.xlsx'), sheet = "stomach"))
+#Replace NA to 0
+Stomach_content_sp[, 30:69][is.na(Stomach_content_sp[, 30:69])] <- 0
+#standardization of sex
+Stomach_content_sp[["Sex"]][is.na(Stomach_content_sp[["Sex"]])] <- "X"
+Stomach_content_sp$Sex[Stomach_content_sp$Sex == "Male"] <- "M"
+Stomach_content_sp$Sex[Stomach_content_sp$Sex == "Female"] <- "F"
+Stomach_content_sp$Sex[Stomach_content_sp$Sex == "?"] <- "X"
+Stomach_content_sp <- Stomach_content_sp[!Species == "candat"]
+#add age group
+Stomach_content_sp <- merge(Stomach_content_sp, all_catch_lip[,.(ct_catchid,ct_agegroup)], by = "ct_catchid", all.x = T)
+#add unique id
+n_na2 <- sum(is.na(Stomach_content_sp$ct_catchid))
+Stomach_content_sp$ct_catchid[is.na(Stomach_content_sp$ct_catchid)] <- paste0("Fish_", seq_len(n_na2))
+Stomach_content_sp <- subset( Stomach_content_sp, select = -c(3:8, 13:28) )
+colnames(Stomach_content_sp)[4] ="SL"
+Stomach_content_bo <- Stomach_content_sp[Species == "bolen"]
+Stomach_content_bo <- Stomach_content_bo %>%
+  mutate(size_class = case_when(SL <= 120 ~ "YOY",
+                                SL %in% 120:300 ~ "older<300",
+                                SL > 300 ~ "older>300"))
+Stomach_content_bo$size_class <- factor(Stomach_content_bo$size_class, levels = c("YOY", "older<300", "older>300"))
+
+Stomach_bo_candat_melt <- setDT(melt(Stomach_content_bo[, .(ct_catchid, SL, Year, size_class, candat, ouklej, 
+                                                               okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Fish)], 
+                                       id.vars = c("ct_catchid", "SL", "Year", "size_class", "Fish"), 
+                                       variable.name = "prey", value.name = "prey_n"))
+sum_bo_dec <- Stomach_bo_candat_melt[stomach_c == 0,.(predator_n = uniqueN(ct_catchid)),
+                    by =.(Year, size_class)]
+sum_bo_dec <- Stomach_bo_candat_melt[,.(prey_n = sum(prey_n),
+                                          predator_n = uniqueN(ct_catchid), 
+                                          predato_r = sum(prey_n)/uniqueN(ct_catchid)),
+                                       by =.(Year, prey, size_class)]
+Stomach_bo_candat_size <- setDT(melt(Stomach_content_bo[, .(ct_catchid, SL, Year, Species, candat_1,candat_2,candat_3,candat_4, candat_5,
+                                                               candat_6, candat_7, candat_8, candat_9, ouklej_1, ouklej_2, ouklej_3, okoun_1,
+                                                               okoun_2, okoun_3, okoun_4, 
+                                                               plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3,
+                                                               cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2, size_class)],
+                                       id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class"), variable.name = "prey_sp", value.name = "prey_size"))
+Stomach_bo_candat_size <- Stomach_bo_candat_size[!prey_size == 0]
+Stomach_bo_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_bo_candat_size$prey_sp))
+sum_bo_dec <- Stomach_bo_candat_size[!prey_size == 0,.(Mean = round(mean(prey_size, na.rm = T), 2),
+                                                           SE = round(plotrix::std.error(prey_size), 2),
+                                                           Max = max(prey_size),
+                                                           Min = min(prey_size),
+                                                           N = length(prey_size)),
+                                         by =.(size_class, prey_sp)]
+write.xlsx(sum_bo_dec, here::here('jan_table.xlsx'))
+Stomach_content_su <- Stomach_content_sp[Species == "sumec"]
+Stomach_content_su <- Stomach_content_su %>%
+  mutate(size_class = case_when(SL %in% 120:300 ~ "older<300",
+                                SL > 300 ~ "older>300"))
+Stomach_su_candat_melt <- setDT(melt(Stomach_content_su[, .(ct_catchid, SL, Year, size_class, candat, ouklej, 
+                                                            okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Fish)], 
+                                     id.vars = c("ct_catchid", "SL", "Year", "size_class", "Fish"), 
+                                     variable.name = "prey", value.name = "prey_n"))
+sum_su_dec <- Stomach_su_candat_melt[Fish == 0,.(predator_n = uniqueN(ct_catchid)),
+                                     by =.(Year, size_class)]
+sum_su_dec <- Stomach_su_candat_melt[,.(prey_n = sum(prey_n),
+                                        predator_n = uniqueN(ct_catchid), 
+                                        predato_r = sum(prey_n)/uniqueN(ct_catchid)),
+                                     by =.(Year, prey, size_class)]
+Stomach_su_candat_size <- setDT(melt(Stomach_content_su[, .(ct_catchid, SL, Year, Species, candat_1,candat_2,candat_3,candat_4, candat_5,
+                                                            candat_6, candat_7, candat_8, candat_9, ouklej_1, ouklej_2, ouklej_3, okoun_1,
+                                                            okoun_2, okoun_3, okoun_4, 
+                                                            plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3,
+                                                            cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2, size_class)],
+                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class"), variable.name = "prey_sp", value.name = "prey_size"))
+Stomach_su_candat_size <- Stomach_su_candat_size[!prey_size == 0]
+Stomach_su_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_su_candat_size$prey_sp))
+sum_su_dec <- Stomach_su_candat_size[!prey_size == 0,.(Mean = round(mean(prey_size, na.rm = T), 2),
+                                                       SE = round(plotrix::std.error(prey_size), 2),
+                                                       Max = max(prey_size),
+                                                       Min = min(prey_size),
+                                                       N = length(prey_size)),
+                                     by =.(size_class, prey_sp)]
+write.xlsx(sum_su_dec, here::here('jan_table.xlsx'))
+Stomach_content_su$size_class <- factor(Stomach_content_su$size_class, levels = c("YOY", "older<300", "older>300"))
+
+Stomach_content_ok <- Stomach_content_sp[Species == "okoun"]
+Stomach_content_ok <- Stomach_content_ok %>%
+  mutate(size_class = case_when(SL <= 70 ~ "YOY",
+                                SL %in% 70:300 ~ "older<300",
+                                SL > 300 ~ "older>300"))
+Stomach_content_ok$size_class <- factor(Stomach_content_ok$size_class, levels = c("YOY", "older<300", "older>300"))
+Stomach_ok_candat_melt <- setDT(melt(Stomach_content_ok[, .(ct_catchid, SL, Year, size_class, candat, ouklej, 
+                                                            okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Fish)], 
+                                     id.vars = c("ct_catchid", "SL", "Year", "size_class", "Fish"), 
+                                     variable.name = "prey", value.name = "prey_n"))
+sum_ok_dec <- Stomach_ok_candat_melt[Fish == 0,.(predator_n = uniqueN(ct_catchid)),
+                                     by =.(Year, size_class)]
+sum_ok_dec <- Stomach_ok_candat_melt[,.(prey_n = sum(prey_n),
+                                        predator_n = uniqueN(ct_catchid), 
+                                        predato_r = sum(prey_n)/uniqueN(ct_catchid)),
+                                     by =.(Year, prey, size_class)]
+Stomach_ok_candat_size <- setDT(melt(Stomach_content_ok[, .(ct_catchid, SL, Year, Species, candat_1,candat_2,candat_3,candat_4, candat_5,
+                                                            candat_6, candat_7, candat_8, candat_9, ouklej_1, ouklej_2, ouklej_3, okoun_1,
+                                                            okoun_2, okoun_3, okoun_4, 
+                                                            plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3,
+                                                            cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2, size_class)],
+                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class"), variable.name = "prey_sp", value.name = "prey_size"))
+Stomach_ok_candat_size <- Stomach_ok_candat_size[!prey_size == 0]
+Stomach_ok_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_ok_candat_size$prey_sp))
+sum_ok_dec <- Stomach_ok_candat_size[!prey_size == 0,.(Mean = round(mean(prey_size, na.rm = T), 2),
+                                                       SE = round(plotrix::std.error(prey_size), 2),
+                                                       Max = max(prey_size),
+                                                       Min = min(prey_size),
+                                                       N = length(prey_size)),
+                                     by =.(size_class, prey_sp)]
+write.xlsx(sum_ok_dec, here::here('jan_table.xlsx'))
+
+Stomach_content_st <- Stomach_content_sp[Species == "stika"]
+Stomach_content_st$size_class <- "older>300"
+Stomach_st_candat_melt <- setDT(melt(Stomach_content_st[, .(ct_catchid, SL, Year, size_class, candat, ouklej, 
+                                                            okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Fish)], 
+                                     id.vars = c("ct_catchid", "SL", "Year", "size_class", "Fish"), 
+                                     variable.name = "prey", value.name = "prey_n"))
+sum_st_dec <- Stomach_st_candat_melt[Fish == 0,.(predator_n = uniqueN(ct_catchid)),
+                                     by =.(Year, size_class)]
+sum_st_dec <- Stomach_st_candat_melt[,.(prey_n = sum(prey_n),
+                                        predator_n = uniqueN(ct_catchid), 
+                                        predato_r = sum(prey_n)/uniqueN(ct_catchid)),
+                                     by =.(Year, prey, size_class)]
+Stomach_st_candat_size <- setDT(melt(Stomach_content_st[, .(ct_catchid, SL, Year, Species, candat_1,candat_2,candat_3,candat_4, candat_5,
+                                                            candat_6, candat_7, candat_8, candat_9, ouklej_1, ouklej_2, ouklej_3, okoun_1,
+                                                            okoun_2, okoun_3, okoun_4, 
+                                                            plotice_1, plotice_2, jezdik_1, jezdik_2, jezdik_3,
+                                                            cejn_1, cejnek_1, cejnek_2, kaprovitka_1, kaprovitka_2, size_class)],
+                                     id.vars = c("ct_catchid", "Year", "Species", "SL", "size_class"), variable.name = "prey_sp", value.name = "prey_size"))
+Stomach_st_candat_size <- Stomach_st_candat_size[!prey_size == 0]
+Stomach_st_candat_size$prey_sp <- sub("\\_.*", "", as.character(Stomach_st_candat_size$prey_sp))
+sum_st_dec <- Stomach_st_candat_size[!prey_size == 0,.(Mean = round(mean(prey_size, na.rm = T), 2),
+                                                       SE = round(plotrix::std.error(prey_size), 2),
+                                                       Max = max(prey_size),
+                                                       Min = min(prey_size),
+                                                       N = length(prey_size)),
+                                     by =.(Year, prey_sp, size_class)]
+write.xlsx(sum_st_dec, here::here('jan_table.xlsx'))
 
