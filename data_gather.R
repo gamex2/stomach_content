@@ -40,7 +40,7 @@ all_gill_sto <- merge(all_gill_sto, all_sampling[, .(sa_samplingid, sa_date_star
 #                                                                   ;", sep = "")))
 # write.xlsx(catches_gillnet, here::here('catches_gillnet.xlsx'))
 catches_gillnet <- setDT(readxl::read_xlsx(here::here('catches_gillnet.xlsx')))
-view(catches_gillnet[sp_speciesid == "okoun"])
+
 
 #beachsein####
 # all_seining <- data.table(dbGetQuery(conn = con, statement = "SELECT *
@@ -122,17 +122,11 @@ Stomach_content_all <- Stomach_content_all %>%
 ggplot(Stomach_content_all, aes(x = SL)) + 
   geom_histogram(stat="count")
 
-with_fish <- subset(Stomach_content_all, rowSums(Stomach_content_all[8:58]) != 0)
-with_fish <- Stomach_content_all[8:58] %>% 
-  filter(rowSums(across(where(is.numeric)))!=0)
-with_fish <- Stomach_content_all %>% filter(!(!rowSums(`[`(.,,8:59))))
-with_fish$stomach_c <- 1
-Stomach_content_all <- merge(Stomach_content_all, with_fish[,.(ct_catchid, stomach_c)], all.x = T)
-Stomach_content_all[is.na(Stomach_content_all)] <- 0
+
 #fish in the stomach
 Stomach_fish_candat_melt <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Year, size_class, candat, ouklej, 
-                                                               okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Dataset, stomach_c)], 
-                                          id.vars = c("ct_catchid", "SL", "Year", "size_class", "Dataset", "stomach_c"), 
+                                                               okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Unknown, Dataset)], 
+                                          id.vars = c("ct_catchid", "SL", "Year", "size_class", "Dataset"), 
                                        variable.name = "prey", value.name = "prey_n"))
 # Stomach_fish_candat_melt <- Stomach_fish_candat_melt[!prey_n==0,]
 # Stomach_fish_candat_melt[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey_n)]
@@ -152,17 +146,14 @@ Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Perca fluviatilis"] <- "Perch"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Alburnus alburnus"] <- "Bleak"
 Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Rutilus rutilus"] <- "Roach"
-Stomach_fish_candat_melt <- Stomach_fish_candat_melt %>%
-  mutate(size_class = case_when(SL <= 160 ~ "YOY",
-                                SL %in% 160:300 ~ "older<300",
-                                SL > 300 ~ "older>300"))
+
 ggplot(Stomach_fish_candat_melt, aes(x = prey_n)) + 
   geom_histogram(stat="count")
 
 #prey n sp ####
-sum_sp_dec <- Stomach_content_all[stomach_c == 0,.(predator_n = uniqueN(ct_catchid)),
-                                         by =.(Year, size_class)]
-
+sum_sp_dec <- Stomach_fish_candat_melt[!sp_scientificname == "Unknown",.(prey_n = sum(prey_n),
+                                          predator_n = uniqueN(ct_catchid)),
+                                         by =.(Dataset, sp_name)]
 sum_sp_dec$predato_r <- sum_sp_dec$prey_n/sum_sp_dec$predator_n
 ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
   geom_col(position="dodge") +
@@ -181,9 +172,9 @@ ggplot(sum_sp_dec, aes(x = sp_name, y = predato_r, fill = Dataset)) +
 sum_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
                                             predator_n = uniqueN(ct_catchid), 
                                             predato_r = sum(prey_n)/uniqueN(ct_catchid)),
-                                       by =.(Year, prey, size_class)]
+                                       by =.(Dataset)]
 
-ggplot(sum_dec_y, aes(x = predato_r)) + ggploYeart(sum_dec_y, aes(x = predato_r)) + 
+ggplot(sum_dec_y, aes(x = predato_r)) + 
   geom_histogram(stat="count")
 
 skewness(sum_dec_y$predato_r)
@@ -397,10 +388,7 @@ Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "
 Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "kaprovitka"] <- "Cypriniformes"
 Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$prey_sp == "Unknown"] <- "Unknown"
 Stomach_fish_candat_size$sp_scientificname[Stomach_fish_candat_size$prey_sp == "Unknown"] <- "Unknown"
-Stomach_fish_candat_size <- Stomach_fish_candat_size %>%
-  mutate(size_class = case_when(SL <= 160 ~ "YOY",
-                                SL %in% 160:300 ~ "older<300",
-                                SL > 300 ~ "older>300"))
+
 ggplot(Stomach_fish_candat_size, aes(x = prey_size)) + 
   geom_histogram(stat="count")
 
@@ -412,9 +400,8 @@ sum_size_dec <- Stomach_fish_candat_size[!prey_size == 0,.(Mean = round(mean(pre
                                              Max = max(prey_size),
                                              Min = min(prey_size),
                                             N = length(prey_size)),
-                               by =.(size_class, prey_sp)]
+                               by =.(Dataset, sp_scientificname)]
 sum_size_dec
-write.xlsx(sum_size_dec, here::here('jan_table.xlsx'))
 sum_size_dec[is.na(sum_size_dec)] <- 0
 # write.xlsx(sum_size_dec, here::here('sum_size_dec.xlsx'))
 #table?
@@ -446,19 +433,41 @@ skewness(Stomach_percid_size$ratio_prey)
 ggplot(Stomach_percid_size, aes(x = ratio_prey)) + 
   geom_histogram()
 
+#general
 set.seed(3333)
-summary(glm.nb(data = Stomach_percid_size, formula = ratio_prey ~ SL * Dataset))
-summary(glm(data = Stomach_percid_size, formula = ratio_prey ~ SL * Dataset, family = "quasipoisson"))
+mnb_size_r <- glm.nb(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL + Dataset)
+summary(mnb_size_r)
+dfun(mnb_size_r)
+with(summary(mnb_size_r), 1 - deviance/null.deviance)
+mqp_size_r <- glm(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL + Dataset, family = "quasipoisson")
+summary(mqp_size_r)
+dfun(mqp_size_r)
+with(summary(mqp_size_r), 1 - deviance/null.deviance)
+
+#percid
+set.seed(3333)
+mnb_size_r_p <- glm.nb(data = Stomach_percid_size, formula = ratio_prey ~ SL + Dataset)
+summary(mnb_size_r_p)
+dfun(mnb_size_r_p)
+with(summary(mnb_size_r_p), 1 - deviance/null.deviance)
+set.seed(3333)
+mqp_size_r_p <- glm(data = Stomach_percid_size, formula = ratio_prey ~ SL + Dataset, family = "quasipoisson")
+summary(mqp_size_r_p)
+dfun(mqp_size_r_p)
+with(summary(mqp_size_r_p), 1 - deviance/null.deviance)
 
 #cyprinid
 set.seed(3333)
-m1 <- lme4::lmer(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL + Dataset + (1|sp_taxonomicorder), REML = FALSE)
-m2 <- glm(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL + Dataset, family = "quasipoisson")
-# with(summary(m1), 1 - deviance/null.deviance)
-anova(m1, m2)
-car::Anova(m1)
-summary(m1)
-summary(m2)
+mnb_size_r_c <- glm.nb(data = Stomach_cyprinid_size, formula = ratio_prey ~ SL + Dataset)
+summary(mnb_size_r_c)
+dfun(mnb_size_r_c)
+with(summary(mnb_size_r_c), 1 - deviance/null.deviance)
+set.seed(3333)
+mqp_size_r_c <- glm(data = Stomach_cyprinid_size, formula = ratio_prey ~ SL + Dataset, family = "quasipoisson")
+summary(mqp_size_r_c)
+dfun(mqp_size_r_c)
+with(summary(mqp_size_r_c), 1 - deviance/null.deviance)
+
 #percid
 set.seed(3333)
 m4 <- lme4::lmer(data = Stomach_fish_candat_size[!sp_taxonomicorder == "Unknown"], formula = ratio_prey ~ SL + Dataset + (1|sp_taxonomicorder), REML = FALSE)
@@ -470,109 +479,94 @@ summary(m4)
 sjPlot::tab_model(m4)
 
 
-ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(width = 0.2)+
-  facet_wrap(~size_class) + 
-  labs(x="Year", y="Size ratio")+
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
-        legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+# ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
+#   geom_boxplot(outlier.shape = NA) +
+#   geom_jitter(width = 0.2)+
+#   facet_wrap(~size_class) + 
+#   labs(x="Year", y="Size ratio")+
+#   theme(plot.title = element_text(size = 32, face = "bold"),
+#         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+#         axis.text.y = element_text(size = 28),
+#         strip.text = element_text(size = 20),
+#         axis.title.x = element_text(size = 20),
+#         axis.title.y = element_text(size = 26),
+#         legend.title = element_text(size=28),
+#         legend.text = element_text(size = 26, face = "italic"))+
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 
-ggplot(Stomach_fish_candat_size, aes(Dataset, ratio_prey)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(width = 0.2)+
-  facet_wrap(~size_class) + 
-  labs(x="Year", y="Size ratio")+
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
-        legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+# ggplot(Stomach_fish_candat_size, aes(Dataset, ratio_prey)) +
+#   geom_boxplot(outlier.shape = NA) +
+#   geom_jitter(width = 0.2)+
+#   facet_wrap(~size_class) + 
+#   labs(x="Year", y="Size ratio")+
+#   theme(plot.title = element_text(size = 32, face = "bold"),
+#         axis.text.x = element_text(size = 28,angle = 45, hjust = 1.05, vjust = 1.05),
+#         axis.text.y = element_text(size = 28),
+#         strip.text = element_text(size = 20),
+#         axis.title.x = element_text(size = 20),
+#         axis.title.y = element_text(size = 26),
+#         legend.title = element_text(size=28),
+#         legend.text = element_text(size = 26, face = "italic"))+
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(width = 0.2, aes(color = sp_taxonomicorder, shape = sp_taxonomicorder), size = 3)+
-  labs(x="Year", y="Size ratio", color="Prey order", shape="Prey order")+
-  # facet_wrap(~size_class, scales = "free") + 
-  scale_shape_manual(values = rep(15:18, )) +
-  scale_color_manual(values=c(rep("blue3",1), rep("black",1), rep("green4", 1))) +
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
-        legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+# ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
+#   geom_boxplot(outlier.shape = NA) +
+#   geom_jitter(width = 0.2, aes(color = sp_taxonomicorder, shape = sp_taxonomicorder), size = 3)+
+#   labs(x="Year", y="Size ratio", color="Prey order", shape="Prey order")+
+#   # facet_wrap(~size_class, scales = "free") + 
+#   scale_shape_manual(values = rep(15:18, )) +
+#   scale_color_manual(values=c(rep("blue3",1), rep("black",1), rep("green4", 1))) +
+#   theme(plot.title = element_text(size = 32, face = "bold"),
+#         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+#         axis.text.y = element_text(size = 28),
+#         strip.text = element_text(size = 20),
+#         axis.title.x = element_text(size = 20),
+#         axis.title.y = element_text(size = 26),
+#         legend.title = element_text(size=28),
+#         legend.text = element_text(size = 26, face = "italic"))+
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(Stomach_fish_candat_size, aes(Dataset, ratio_prey)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(width = 0.2, aes(color = sp_taxonomicorder, shape = sp_taxonomicorder), size = 3)+
-  labs(x="Year", y="Size ratio", color="Prey order", shape="Prey order")+
-  # facet_wrap(~size_class, scales = "free_x") + 
-  scale_shape_manual(values = rep(15:18, )) +
-  scale_color_manual(values=c(rep("blue3",1), rep("black",1), rep("green4", 1))) +
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
-        legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+# ggplot(Stomach_fish_candat_size, aes(Dataset, ratio_prey)) +
+#   geom_boxplot(outlier.shape = NA) +
+#   geom_jitter(width = 0.2, aes(color = sp_taxonomicorder, shape = sp_taxonomicorder), size = 3)+
+#   labs(x="Year", y="Size ratio", color="Prey order", shape="Prey order")+
+#   # facet_wrap(~size_class, scales = "free_x") + 
+#   scale_shape_manual(values = rep(15:18, )) +
+#   scale_color_manual(values=c(rep("blue3",1), rep("black",1), rep("green4", 1))) +
+#   theme(plot.title = element_text(size = 32, face = "bold"),
+#         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+#         axis.text.y = element_text(size = 28),
+#         strip.text = element_text(size = 20),
+#         axis.title.x = element_text(size = 20),
+#         axis.title.y = element_text(size = 26),
+#         legend.title = element_text(size=28),
+#         legend.text = element_text(size = 26, face = "italic"))+
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(Stomach_fish_candat_size[prey_sp %in% c("okoun", "jezdik", "plotice")], aes(SL, ratio_prey)) +
-  geom_jitter(width = 0.2, aes(color = Dataset))+
-  facet_wrap(~prey_sp, scales = "free_y", ncol = 1) + 
-  geom_smooth(method='glm', formula= y~x, method.args = list(family = "quasipoisson"), aes(color = Dataset, fill = Dataset))+
-  labs(x="Pikeperch SL (mm)", y="Prey size")+
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
-        legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+# ggplot(Stomach_fish_candat_size[prey_sp %in% c("okoun", "jezdik", "plotice")], aes(SL, ratio_prey)) +
+#   geom_jitter(width = 0.2, aes(color = Dataset))+
+#   facet_wrap(~prey_sp, scales = "free_y", ncol = 1) + 
+#   geom_smooth(method='glm', formula= y~x, method.args = list(family = "quasipoisson"), aes(color = Dataset, fill = Dataset))+
+#   labs(x="Pikeperch SL (mm)", y="Prey size")+
+#   theme(plot.title = element_text(size = 32, face = "bold"),
+#         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+#         axis.text.y = element_text(size = 28),
+#         strip.text = element_text(size = 20),
+#         axis.title.x = element_text(size = 20),
+#         axis.title.y = element_text(size = 26),
+#         legend.title = element_text(size=28),
+#         legend.text = element_text(size = 26, face = "italic"))+
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(Stomach_fish_candat_size[!size_class == "YOY"& prey_sp %in% c("okoun", "jezdik", "plotice")], aes(SL, ratio_prey)) +
-  geom_jitter(width = 0.2, aes(color = Dataset))+
-  facet_wrap(~prey_sp, scales = "free_y", ncol = 1) + 
-  geom_smooth(method='lm', formula= y~x, aes(color = Dataset, fill = Dataset))+
-  labs(x="SL (mm)", y="Size ratio")+
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
-        legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 #order
-ggplot(Stomach_fish_candat_size[!sp_taxonomicorder == "Unknown"], aes(SL, ratio_prey)) +
+ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey)) +
   geom_jitter(width = 0.2, aes(color = Dataset))+
   facet_wrap(~sp_taxonomicorder, scales = "free_y", ncol = 1) + 
   geom_smooth(method='glm', formula= y~x, aes(color = Dataset, fill = Dataset), method.args = list(family = "quasipoisson"))+
@@ -588,36 +582,36 @@ ggplot(Stomach_fish_candat_size[!sp_taxonomicorder == "Unknown"], aes(SL, ratio_
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
-ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey, colour = Dataset)) +
-  geom_jitter(width = 0.2)+
-  # facet_wrap(~size_class, scales = "free", ncol = 1) + 
-  geom_smooth(method='glm', formula= y~x, aes(fill = Dataset), method.args = list(family = "quasipoisson"))+
- stat_poly_eq(use_label(c("eq", "R2"))) +
-  labs(x="SL (mm)", y="PPR")+
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
-        legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+# ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey, colour = Dataset)) +
+#   geom_jitter(width = 0.2)+
+#   # facet_wrap(~size_class, scales = "free", ncol = 1) + 
+#   geom_smooth(method='glm', formula= y~x, aes(fill = Dataset), method.args = list(family = "quasipoisson"))+
+#  stat_poly_eq(use_label(c("eq", "R2"))) +
+#   labs(x="SL (mm)", y="PPR")+
+#   theme(plot.title = element_text(size = 32, face = "bold"),
+#         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+#         axis.text.y = element_text(size = 28),
+#         strip.text = element_text(size = 20),
+#         axis.title.x = element_text(size = 20),
+#         axis.title.y = element_text(size = 26),
+#         legend.title = element_text(size=28),
+#         legend.text = element_text(size = 26, face = "italic"))+
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 #authors comparison
 author <- setDT(readxl::read_xlsx(here::here('Author_ratio.xlsx')))
 Stomach_fish_candat_size$author <- "HBU"
-Stomach_fish_comparison_size <- rbind(author, Stomach_fish_candat_size[,.(SL,ratio_prey, sp_taxonomicorder, author, prey_sp, prey_size)])
+Stomach_fish_comparison_size <- rbind(author[,.(SL,ratio_prey, sp_taxonomicorder, author, prey_sp)], Stomach_fish_candat_size[,.(SL,ratio_prey, sp_taxonomicorder, author, prey_sp)])
 Stomach_fish_comparison_size$author <- factor(Stomach_fish_comparison_size$author, levels = c("HBU", "Keskinen_2004", "Dorner_2007", "Nolan_2018", "Bousseba_2020"))
 shapiro.test(Stomach_fish_comparison_size$ratio_prey)
 set.seed(3333)
-m1 <- lme4::lmer(data = Stomach_fish_comparison_size, formula = ratio_prey ~ SL + (1 + SL | author), REML = F)
+m1 <- lme4::lmer(data = Stomach_fish_comparison_size, formula = ratio_prey ~ SL + author + (1 | sp_taxonomicorder), REML = F)
 summary(m1)
 coef(m1)
 
 set.seed(3333)
-model <- caret::train(ratio_prey ~ SL + author, Stomach_fish_comparison_size,
+model <- caret::train(ratio_prey ~ SL + author + SL : author, Stomach_fish_comparison_size,
                method = "glm",
                family = "quasipoisson",
                trControl = trainControl(method= "repeatedcv",
@@ -627,17 +621,17 @@ model <- caret::train(ratio_prey ~ SL + author, Stomach_fish_comparison_size,
 summary(model)
 model
 
-set.seed(3333)
-model2 <- caret::train(ratio_prey ~ author, Stomach_fish_comparison_size,
-                       method = "glm",
-                       family = "quasipoisson",
-                      trControl = trainControl(method= "repeatedcv",
-                                               number = 10, 
-                                               verboseIter = T,
-                                               repeats = 10))
-summary(model2)
-model2
-anova(model$finalModel, model2$finalModel)
+# set.seed(3333)
+# model2 <- caret::train(ratio_prey ~ author, Stomach_fish_comparison_size,
+#                        method = "glm",
+#                        family = "quasipoisson",
+#                       trControl = trainControl(method= "repeatedcv",
+#                                                number = 10, 
+#                                                verboseIter = T,
+#                                                repeats = 10))
+# summary(model2)
+# model2
+# anova(model$finalModel, model2$finalModel)
 car::Anova(model$finalModel)
 
 #sp analises
@@ -688,7 +682,7 @@ ggplot(Stomach_fish_comparison_size, aes(SL, ratio_prey)) +
 ggplot(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cypriniformes", "Perciformes")], aes(SL, ratio_prey)) +
   geom_jitter(width = 0.2, aes(color = author))+
   facet_wrap(~sp_taxonomicorder, scales = "free_y", ncol = 1) +
-  geom_smooth(method='lm', formula= y~x, aes(color = author, fill = author))+
+  geom_smooth(method='glm', formula= y~x, aes(color = author, fill = author), method.args = list(family = "quasipoisson"))+
   scale_color_manual(values=c(rep("red3",1), rep("green4",1), rep("blue1", 1)))+
   scale_fill_manual(values=c(rep("red3",1), rep("green4",1), rep("blue1", 1)))+
   labs(x="SL (mm)", y="PPR", fill = "Authors", color = "Authors")+
