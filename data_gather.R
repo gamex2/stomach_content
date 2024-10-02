@@ -621,45 +621,45 @@ model <- caret::train(ratio_prey ~ SL + author + SL : author, Stomach_fish_compa
 summary(model)
 model
 
-# set.seed(3333)
-# model2 <- caret::train(ratio_prey ~ author, Stomach_fish_comparison_size,
-#                        method = "glm",
-#                        family = "quasipoisson",
-#                       trControl = trainControl(method= "repeatedcv",
-#                                                number = 10, 
-#                                                verboseIter = T,
-#                                                repeats = 10))
-# summary(model2)
-# model2
+set.seed(3333)
+model2 <- caret::train(ratio_prey ~ author + SL + SL : author, Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cypriniformes")],
+                       method = "glm",
+                       family = "quasipoisson",
+                      trControl = trainControl(method= "repeatedcv",
+                                               number = 10,
+                                               verboseIter = T,
+                                               repeats = 10))
+summary(model2)
+model2
 # anova(model$finalModel, model2$finalModel)
 car::Anova(model$finalModel)
 
 #sp analises
-Stomach_fish_comparison_size$ct_catchid <- paste0("Fish_", seq_len(2198))
-Stomach_fish_comparison_sp <- dcast(Stomach_fish_comparison_size[prey_sp %in% c("okoun") & author%in% c("HBU","Dorner_2007")],
-                                    author + ct_catchid + SL ~ prey_sp, value.var = "ratio_prey")
-Stomach_fish_comparison_sp$author <- factor(Stomach_fish_comparison_sp$author, levels = c("HBU","Dorner_2007"))
-
-set.seed(3333)
-model_sp <- caret::train(okoun ~ author + SL + author:SL, Stomach_fish_comparison_sp,
-                      method = "lm",
-                      trControl = trainControl(method= "repeatedcv",
-                                               number = 10, 
-                                               verboseIter = T,
-                                               repeats = 10))
-summary(model_sp)
-model_sp
-
-set.seed(3333)
-model_sp2 <- caret::train(okoun ~ author + SL, Stomach_fish_comparison_sp,
-                         method = "lm",
-                         trControl = trainControl(method= "repeatedcv",
-                                                  number = 10, 
-                                                  verboseIter = T,
-                                                  repeats = 10))
-summary(model_sp2)
-model_sp2
-anova(model_sp$finalModel, model_sp2$finalModel)
+# Stomach_fish_comparison_size$ct_catchid <- paste0("Fish_", seq_len(2197))
+# Stomach_fish_comparison_sp <- dcast(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cypriniformes", "Perciformes")],
+#                                     author + prey_sp + SL ~ sp_taxonomicorder, value.var = "ratio_prey")
+# Stomach_fish_comparison_sp$author <- factor(Stomach_fish_comparison_sp$author, levels = c("HBU","Dorner_2007"))
+# 
+# set.seed(3333)
+# model_sp <- caret::train(okoun ~ author + SL + author:SL, Stomach_fish_comparison_sp,
+#                       method = "lm",
+#                       trControl = trainControl(method= "repeatedcv",
+#                                                number = 10, 
+#                                                verboseIter = T,
+#                                                repeats = 10))
+# summary(model_sp)
+# model_sp
+# 
+# set.seed(3333)
+# model_sp2 <- caret::train(okoun ~ author + SL, Stomach_fish_comparison_sp,
+#                          method = "lm",
+#                          trControl = trainControl(method= "repeatedcv",
+#                                                   number = 10, 
+#                                                   verboseIter = T,
+#                                                   repeats = 10))
+# summary(model_sp2)
+# model_sp2
+# anova(model_sp$finalModel, model_sp2$finalModel)
 
 #graphs
 ggplot(Stomach_fish_comparison_size, aes(SL, ratio_prey)) +
