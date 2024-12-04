@@ -855,7 +855,7 @@ Stomach_fish_comparison_size <- rbind(author[,.(SL,ratio_prey, sp_taxonomicorder
 Stomach_fish_comparison_size$author <- factor(Stomach_fish_comparison_size$author, levels = c("Moraes", "Keskinen_2004", "Dorner_2007", "Nolan_2018", "Bousseba_2020"))
 Stomach_fish_comparison_size$sp_taxonomicorder[Stomach_fish_comparison_size$sp_taxonomicorder == "Cypriniformes"] <- "Cyprinids"
 Stomach_fish_comparison_size$sp_taxonomicorder[Stomach_fish_comparison_size$sp_taxonomicorder == "Perciformes"] <- "Percids"
-write.xlsx(Stomach_fish_comparison_size, here::here('author_full_data.xlsx'))
+# write.xlsx(Stomach_fish_comparison_size, here::here('author_full_data.xlsx'))
 
 shapiro.test(Stomach_fish_comparison_size$ratio_prey)
 set.seed(3333)
