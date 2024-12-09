@@ -8,7 +8,7 @@ source(here::here('functions.R'))
 # # specs <- data.table(dbGetQuery(conn = con, statement =  "SELECT * FROM fishecu.species;"))#to see the whole table (reservoir). Important to see the reservoir ID number.
 # # specs <- specs[,c(1,2,10)]
 # # write.xlsx(specs, here::here('specs.xlsx'))
-# specs <- setDT(readxl::read_xlsx(here::here('specs.xlsx')))
+specs <- setDT(readxl::read_xlsx(here::here('specs.xlsx')))
 # 
 # #Localities
 # # all_locality <- data.table(dbGetQuery(conn = con, statement = "SELECT *
@@ -162,27 +162,27 @@ Stomach_fish_candat_melt_sp <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL
                                                                   okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá, Dataset)], 
                                           id.vars = c("ct_catchid", "SL", "Year", "size_class", "Dataset"), 
                                           variable.name = "prey", value.name = "prey_n"))
-Stomach_fish_candat_melt <- merge(Stomach_fish_candat_melt, specs[,.(sp_speciesid,sp_taxonomicorder, sp_scientificname)], by.x = "prey", by.y = "sp_speciesid", all.x = T)
-Stomach_fish_candat_melt$sp_taxonomicorder[Stomach_fish_candat_melt$prey == "kaprovitka"] <- "Cypriniformes"
-Stomach_fish_candat_melt$sp_taxonomicorder[Stomach_fish_candat_melt$prey == "okounovitá"] <- "Perciformes"
-Stomach_fish_candat_melt$sp_scientificname[Stomach_fish_candat_melt$prey == "kaprovitka"] <- "Cyprinid"
-Stomach_fish_candat_melt$sp_scientificname[Stomach_fish_candat_melt$prey == "okounovitá"] <- "Percid"
-Stomach_fish_candat_melt$sp_scientificname[Stomach_fish_candat_melt$prey == "Unknown"] <- "Unknown"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$prey == "kaprovitka"] <- "Cyprinid"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$prey == "okounovitá"] <- "Percid"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Sander lucioperca"] <- "Pikeperch"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Abramis brama"] <- "Bream"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Gymnocephalus cernua"] <- "Ruffe"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Perca fluviatilis"] <- "Perch"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Alburnus alburnus"] <- "Bleak"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Rutilus rutilus"] <- "Roach"
-Stomach_fish_candat_melt$sp_name[Stomach_fish_candat_melt$sp_scientificname == "Blicca bjoerkna"] <- "Silver bream"
+Stomach_fish_candat_melt_sp <- merge(Stomach_fish_candat_melt_sp, specs[,.(sp_speciesid,sp_taxonomicorder, sp_scientificname)], by.x = "prey", by.y = "sp_speciesid", all.x = T)
+Stomach_fish_candat_melt_sp$sp_taxonomicorder[Stomach_fish_candat_melt_sp$prey == "kaprovitka"] <- "Cypriniformes"
+Stomach_fish_candat_melt_sp$sp_taxonomicorder[Stomach_fish_candat_melt_sp$prey == "okounovitá"] <- "Perciformes"
+Stomach_fish_candat_melt_sp$sp_scientificname[Stomach_fish_candat_melt_sp$prey == "kaprovitka"] <- "Cyprinid"
+Stomach_fish_candat_melt_sp$sp_scientificname[Stomach_fish_candat_melt_sp$prey == "okounovitá"] <- "Percid"
+Stomach_fish_candat_melt_sp$sp_scientificname[Stomach_fish_candat_melt_sp$prey == "Unknown"] <- "Unknown"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$prey == "kaprovitka"] <- "Cyprinid"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$prey == "okounovitá"] <- "Percid"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Sander lucioperca"] <- "Pikeperch"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Abramis brama"] <- "Bream"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Gymnocephalus cernua"] <- "Ruffe"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Perca fluviatilis"] <- "Perch"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Alburnus alburnus"] <- "Bleak"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Rutilus rutilus"] <- "Roach"
+Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Blicca bjoerkna"] <- "Silver bream"
 
-ggplot(Stomach_fish_candat_melt, aes(x = prey_n)) + 
+ggplot(Stomach_fish_candat_melt_sp, aes(x = prey_n)) + 
   geom_histogram(stat="count")
 
 #prey per tt ####
-sum_tt_per <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n)),
+sum_tt_per <- Stomach_fish_candat_melt_sp[,.(prey_n = sum(prey_n)),
                                        by =.(ct_catchid, SL, Dataset, Year)]
 ggplot(sum_tt_per, aes(x = prey_n)) + 
   geom_histogram(stat="count")
@@ -211,40 +211,43 @@ ggplot(sum_tt_per, aes(SL, prey_n)) + #Possible fig. 1
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 #prey per sp ####
-sum_sp_per <- Stomach_fish_candat_melt[!sp_scientificname %in% c("Percid", "Cyprinid"),.(prey_n = sum(prey_n)),
-                                       by =.(Dataset,sp_name)]
-sum_sp_per[Dataset == "20's"]$per <- sum_sp_per[Dataset == "20's"]$prey_n/sum(sum_sp_per[Dataset == "20's"]$prey_n) * 100
-sum_sp_per[!Dataset == "20's"]$per <- sum_sp_per[!Dataset == "20's"]$prey_n/sum(sum_sp_per[!Dataset == "20's"]$prey_n) * 100
-sum_sp_per <- sum_sp_per[!prey_n==0,]
+# sum_sp_per <- Stomach_fish_candat_melt_sp[!sp_scientificname %in% c("Percid", "Cyprinid"),.(prey_n = sum(prey_n)),
+#                                        by =.(Dataset,sp_name)]
+# sum_sp_per[Dataset == "20's"]$per <- sum_sp_per[Dataset == "20's"]$prey_n/sum(sum_sp_per[Dataset == "20's"]$prey_n) * 100
+# sum_sp_per[!Dataset == "20's"]$per <- sum_sp_per[!Dataset == "20's"]$prey_n/sum(sum_sp_per[!Dataset == "20's"]$prey_n) * 100
+# sum_sp_per <- sum_sp_per[!prey_n==0,]
 
-sum_sp_dec <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+sum_sp_dec <- Stomach_fish_candat_melt_sp[,.(prey_n = sum(prey_n),
                                           predator_n = uniqueN(ct_catchid)),
                                        by =.(Dataset, sp_name, Year)]
 
 
 sum_sp_dec$predato_r <- sum_sp_dec$prey_n/sum_sp_dec$predator_n
 
-#figure 2####
-ggplot(sum_dec_y, aes(x = as.factor(Year), y = predato_r, fill = Dataset)) +
-  geom_col(position="dodge") +
-  labs(x = "Species", y = "Mean prey per predator", fill = "Dataset")+
-  # scale_fill_brewer(palette = "Set1") +
-  theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 45, hjust =1.1, vjust = 1.05, face = "italic"),
-        axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 28),
-        axis.title.x = element_text(size = 28),
-        axis.title.y = element_text(size = 28),
-        legend.title = element_text(size = 28),
-        legend.text = element_text(size = 28))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"))
-
-sum_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+sum_dec_y <- Stomach_fish_candat_melt_sp[,.(prey_n = sum(prey_n),
                                          predator_n = uniqueN(ct_catchid), 
                                          predato_r = sum(prey_n)/uniqueN(ct_catchid)),
                                       by =.(Dataset, Year)]
 
+#figure 2####
+ggplot(sum_dec_y, aes(x = as.factor(Year), y = predato_r, fill = Dataset)) +
+  geom_col(position="dodge") +
+  labs(x = "Species", y = "Mean prey per predator", fill = "Dataset")+
+  # facet_wrap(~)
+  # scale_fill_brewer(palette = "Set1") +
+  theme(plot.title = element_text(size = 32, face = "bold"),
+        axis.text.x = element_text(size = 28, angle = 45, hjust =1.1, vjust = 1.05, face = "italic"),
+        axis.text.y = element_text(size = 28),
+        strip.text = element_text(size = 28),
+        axis.title.x = element_text(size = 28),
+        axis.title.y = element_text(size = 28),
+        legend.title = element_text(size = 28),
+        legend.text = element_text(size = 28))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+
+
 ggplot(sum_dec_y, aes(x = as.factor(Year), y = predato_r, fill = Dataset)) +
   geom_col(position="dodge") +
   labs(x = "Species", y = "Mean prey per predator", fill = "Dataset")+
@@ -259,8 +262,6 @@ ggplot(sum_dec_y, aes(x = as.factor(Year), y = predato_r, fill = Dataset)) +
         legend.text = element_text(size = 28))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
-ggplot(sum_dec_y, aes(x = predato_r, y = )) + 
-  geom_bar(stat="stack", )
 
 skewness(sum_dec_y$predato_r)
 shapiro.test(sum_dec_y$predato_r)
@@ -276,7 +277,7 @@ dfun(mzy)
 with(summary(mzy), 1 - deviance/null.deviance)
 with(summary(mzyf), 1 - deviance/null.deviance)
 
-sum_sp_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+sum_sp_dec_y <- Stomach_fish_candat_melt_sp[,.(prey_n = sum(prey_n),
                                             predator_n = uniqueN(ct_catchid), 
                                             predato_r = sum(prey_n)/uniqueN(ct_catchid)),
                                          by =.(Dataset, Year, sp_name)]
@@ -284,39 +285,12 @@ teste <- sum_sp_dec_y[,.(predato_m = mean(predato_r),
                          predator_se = plotrix::std.error(predato_r)), 
                       by =.(Dataset, sp_name)]
 
-lapply(dcast_sp_dec_y[, c(3:11)],shapiro.test)
-lapply(dcast_sp_dec_y[, c(3:11)],skewness)
-
-set.seed(9999)
-mzy_zi_sp <- lapply(dcast_sp_dec_y[, c(3:11)], 
-                    function(x) glm(formula = x ~ Dataset, data = dcast_sp_dec_y, family = "quasipoisson"))
-summary(mzy_zi_sp$`Abramis brama`)
-dfun(mzy_zi_sp$`Abramis brama`)
-summary(mzy_zi_sp$`Alburnus alburnus`)
-dfun(mzy_zi_sp$`Alburnus alburnus`)
-summary(mzy_zi_sp$`Blicca bjoerkna`)
-dfun(mzy_zi_sp$`Blicca bjoerkna`)
-summary(mzy_zi_sp$`Cyprinid`)
-dfun(mzy_zi_sp$`Cyprinid`)
-summary(mzy_zi_sp$`Percid`)
-dfun(mzy_zi_sp$`Percid`)
-summary(mzy_zi_sp$`Gymnocephalus cernua`)
-dfun(mzy_zi_sp$`Gymnocephalus cernua`)
-with(summary(mzy_zi_sp$`Gymnocephalus cernua`), 1 - deviance/null.deviance)
-summary(mzy_zi_sp$`Perca fluviatilis`)
-dfun(mzy_zi_sp$`Perca fluviatilis`)
-with(summary(mzy_zi_sp$`Perca fluviatilis`), 1 - deviance/null.deviance)
-summary(mzy_zi_sp$`Rutilus rutilus`)
-dfun(mzy_zi_sp$`Rutilus rutilus`)
-summary(mzy_zi_sp$`Sander lucioperca`)
-dfun(mzy_zi_sp$`Sander lucioperca`)
-with(summary(mzy_zi_sp$`Sander lucioperca`), 1 - deviance/null.deviance)
-
+dcast_sp_dec_y <- dcast(data = sum_sp_dec_y, formula = Dataset + Year ~ sp_name, value.var = "predato_r")
 #family analises
-sum_or_dec_y <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+sum_or_dec_y <- Stomach_fish_candat_melt_sp[,.(prey_n = sum(prey_n),
                                             predator_n = uniqueN(ct_catchid), 
                                             predato_r = sum(prey_n)/uniqueN(ct_catchid)),
-                                         by =.(Dataset, sp_taxonomicorder)]
+                                         by =.(Dataset, Year, sp_taxonomicorder)]
 shapiro.test(sum_or_dec_y$predato_r)
 skewness(sum_or_dec_y$predato_r)
 mzy_qp_or <- glm(predato_r ~ Dataset + sp_taxonomicorder, data = sum_or_dec_y, family = "quasipoisson")
@@ -341,17 +315,17 @@ dfun(mzy_zi_sp$Perciformes)
 with(summary(mzy_zi_sp$Perciformes), 1 - deviance/null.deviance)
 
 #prey mean ####
-sum_n_dec <- Stomach_fish_candat_melt[,.(prey_n = sum(prey_n),
+sum_n_dec <- Stomach_fish_candat_melt_sp[,.(prey_n = sum(prey_n),
                                          predator_n = uniqueN(ct_catchid)),
                                       by =.(Year, Dataset,sp_name)]
 sum_n_dec$predato_r <- sum_n_dec$prey_n/sum_n_dec$predator_n
 
 #figure 3####
 ggplot(sum_sp_dec_y[!sp_name %in% c("Percid","Cyprinid")], #Fig. 3
-       aes(x = sp_name, y = predato_r, fill = Dataset)) +
+       aes(x = Dataset, y = predato_r, fill = Dataset)) +
   geom_boxplot(width = 0.5, position = position_dodge(0.9), outlier.shape = NA) +
   geom_jitter(alpha = 0.6, position = position_jitterdodge(jitter.width = 0.1)) +
-  # facet_wrap(~Time, scale = 'free_y')+
+  facet_wrap(~sp_name, scale = 'free_y')+
   theme(strip.text = element_text(face = "italic")) +
   stat_summary(fun = mean, geom = "point", shape = 20, size = 5, col = 'black', position = position_dodge(.9)) +
   stat_summary(fun = mean, geom = "point", shape = 20, size = 4, col = 'white', position = position_dodge(.9)) +
@@ -373,8 +347,6 @@ mzy_qp_sp <- glm(predato_r ~ Dataset + sp_name, data = sum_sp_dec_y, family = "q
 summary(mzy_qp_sp)
 dfun(mzy_qp_sp)
 with(summary(mzy_qp_sp), 1 - deviance/null.deviance)
-
-dcast_sp_dec_y <- dcast(data = sum_sp_dec_y, formula = Dataset + Year ~ sp_name, value.var = "predato_r")
 
 lapply(dcast_sp_dec_y[, c(3:11)],shapiro.test)
 lapply(dcast_sp_dec_y[, c(3:11)],skewness)
@@ -406,7 +378,7 @@ dfun(mzy_zi_sp$Pikeperch)
 with(summary(mzy_zi_sp$Pikeperch), 1 - deviance/null.deviance)
 
 #family analises
-sum_or_dec_y <- Stomach_fish_candat_melt[!sp_taxonomicorder == "Unknown",.(prey_n = sum(prey_n),
+sum_or_dec_y <- Stomach_fish_candat_melt_sp[!sp_taxonomicorder == "Unknown",.(prey_n = sum(prey_n),
                                                                            predator_n = uniqueN(ct_catchid), 
                                                                            predato_r = sum(prey_n)/uniqueN(ct_catchid)),
                                          by =.(Dataset, Year, sp_taxonomicorder)]
@@ -478,8 +450,8 @@ Stomach_fish_candat_size$sp_taxonomicorder[Stomach_fish_candat_size$sp_taxonomic
 ggplot(Stomach_fish_candat_size, aes(x = prey_size)) + 
   geom_histogram(stat="count")
 
-Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Perciformes"]
-Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cypriniformes"]
+Stomach_percid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Percids"]
+Stomach_cyprinid_size <- Stomach_fish_candat_size[sp_taxonomicorder == "Cyprinids"]
 Stomach_fish_candat_size$n_prey <- 1
 sum_size_dec <- Stomach_fish_candat_size[!prey_size == 0,.(Mean = round(mean(prey_size, na.rm = T), 2),
                                                            SE = round(plotrix::std.error(prey_size), 2),
@@ -562,8 +534,6 @@ m5 <- lme4::lmer(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL + Da
 anova(m4, m5)
 car::Anova(m4)
 summary(m4)
-sjPlot::tab_model(m4)
-model.comparison()
 
 # ggplot(Stomach_fish_candat_size, aes(as.factor(Year), ratio_prey)) +
 #   geom_boxplot(outlier.shape = NA) +
@@ -665,6 +635,14 @@ ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey)) +
         legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
+Stomach_fish_candat_size %>%
+  group_by(Dataset) %>%
+  do({
+    mod = glm(ratio_prey ~ SL, data = ., family = "quasipoisson")
+    data.frame(Intercept = coef(mod)[1],
+               Slope = coef(mod)[2])
+  })
+
 #order
 #figure 6####
 ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey)) +
@@ -682,6 +660,14 @@ ggplot(Stomach_fish_candat_size, aes(SL, ratio_prey)) +
         legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+Stomach_fish_candat_size %>%
+  group_by(Dataset, sp_taxonomicorder) %>%
+  do({
+    mod = glm(ratio_prey ~ SL, data = ., family = "quasipoisson")
+    data.frame(Intercept = coef(mod)[1],
+               Slope = coef(mod)[2])
+  })
 
 # ggplot(Stomach_fish_candat_size[prey_sp == "okoun"], aes(SL, prey_size)) +
 #   geom_jitter(width = 0.2, aes(color = Dataset)) +
@@ -981,14 +967,14 @@ ggplot(Stomach_fish_comparison_size[prey_sp %in% c("plotice", "jezdik", "candat"
         panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")
 
 #prey per 100 fish
-stats_sum_prey <- Stomach_fish_candat_melt[,.(fish_n = length(unique(ct_catchid)),
+stats_sum_prey <- Stomach_fish_candat_melt_sp[,.(fish_n = length(unique(ct_catchid)),
                                               prey_n = sum(prey_n)),
                                            by = .(size_class, Year, sp_taxonomicorder, prey)]
 stats_sum_prey[, ':='(prey100 = (prey_n/fish_n)*100)]
 stats_sum_prey[, sp_grouped := fct_lump(f = prey, prop = 0.05, w = prey100)]
 stats_sum_prey
 
-dec_sum_prey <- Stomach_fish_candat_melt[,.(fish_n = length(unique(ct_catchid)),
+dec_sum_prey <- Stomach_fish_candat_melt_sp[,.(fish_n = length(unique(ct_catchid)),
                                             prey_n = sum(prey_n)),
                                          by = .(size_class, Dataset, sp_taxonomicorder, prey)]
 dec_sum_prey$yv[dec_sum_prey$Dataset == "19's"] <- 5
@@ -1062,7 +1048,7 @@ ggplot(dec_sum_prey, aes(x = Dataset, y = prey100, fill = prey)) +
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 #Amundsen
-elec_sto_data <- Stomach_fish_candat_melt[!prey_n == 0 & !sp_name %in% c("Unknown", "Silver bream", "Cyprinid", "Percid")]
+elec_sto_data <- Stomach_fish_candat_melt_sp[!prey_n == 0 & !sp_name %in% c("Unknown", "Silver bream", "Cyprinid", "Percid")]
 elec_sto_data_sp <- elec_sto_data[,.(prey_sp = sum(prey_n),
                                      predator_sp = uniqueN(ct_catchid)),
                                   by =.(sp_name, Year)]
