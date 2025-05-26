@@ -516,7 +516,7 @@ set.seed(3333)
 # summary(mnb_size_r)
 # dfun(mnb_size_r)
 # with(summary(mnb_size_r), 1 - deviance/null.deviance)
-mqp_size_r <- glm(data = Stomach_fish_candat_size, formula = ratio_prey ~ SL + Dataset, family = "quasipoisson")
+mqp_size_r <- glm(data = Stomach_fish_candat_size, formula = sqrt(ratio_prey) ~ SL + Dataset, family = "gaussian")
 summary(mqp_size_r)
 dfun(mqp_size_r)
 with(summary(mqp_size_r), 1 - deviance/null.deviance)
@@ -528,7 +528,7 @@ with(summary(mqp_size_r), 1 - deviance/null.deviance)
 # dfun(mnb_size_r_p)
 # with(summary(mnb_size_r_p), 1 - deviance/null.deviance)
 set.seed(3333)
-mqp_size_r_p <- glm(data = Stomach_percid_size, formula = ratio_prey ~ SL + Dataset, family = "quasipoisson")
+mqp_size_r_p <- glm(data = Stomach_percid_size, formula = sqrt(ratio_prey) ~ SL + Dataset, family = "gaussian")
 summary(mqp_size_r_p)
 dfun(mqp_size_r_p)
 with(summary(mqp_size_r_p), 1 - deviance/null.deviance)
@@ -540,7 +540,7 @@ with(summary(mqp_size_r_p), 1 - deviance/null.deviance)
 # dfun(mnb_size_r_c)
 # with(summary(mnb_size_r_c), 1 - deviance/null.deviance)
 set.seed(3333)
-mqp_size_r_c <- glm(data = Stomach_cyprinid_size, formula = ratio_prey ~ SL + Dataset, family = "quasipoisson")
+mqp_size_r_c <- glm(data = Stomach_cyprinid_size, formula = sqrt(ratio_prey) ~ SL + Dataset, family = "gaussian")
 summary(mqp_size_r_c)
 dfun(mqp_size_r_c)
 with(summary(mqp_size_r_c), 1 - deviance/null.deviance)
@@ -878,58 +878,25 @@ set.seed(3333)
 # coef(m1)
 
 set.seed(3333)
-model <- caret::train(ratio_prey ~ SL + author + SL : author, Stomach_fish_comparison_size,
-                      method = "glm",
-                      family = "quasipoisson",
-                      trControl = trainControl(method= "repeatedcv",
-                                               number = 10, 
-                                               verboseIter = T,
-                                               repeats = 10))
-summary(model)
-model
-author_poisson <- glm(data = Stomach_fish_comparison_size, formula = ratio_prey ~ SL * author, family = "quasipoisson")
-data.frame(Intercept = coef(model$finalModel)[1],
-           Slope = coef(model$finalModel)[2])
-summary(author_poisson$coefficients)
-set.seed(3333)
-model2 <- caret::train(ratio_prey ~ author + SL + SL : author, Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Percids")],
-                       method = "glm",
-                       family = "quasipoisson",
-                       trControl = trainControl(method= "repeatedcv",
-                                                number = 10,
-                                                verboseIter = T,
-                                                repeats = 10))
-summary(model2)
-model2
-# anova(model$finalModel, model2$finalModel)
-car::Anova(model$finalModel)
+author_poisson <- glm(data = Stomach_fish_comparison_size, formula = sqrt(ratio_prey) ~ SL * author, family = "gaussian")
+summary(author_poisson)
+with(summary(author_poisson), 1 - deviance/null.deviance)
 
-#sp analises
-# Stomach_fish_comparison_size$ct_catchid <- paste0("Fish_", seq_len(2197))
-# Stomach_fish_comparison_sp <- dcast(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cypriniformes", "Perciformes")],
-#                                     author + prey_sp + SL ~ sp_taxonomicorder, value.var = "ratio_prey")
-# Stomach_fish_comparison_sp$author <- factor(Stomach_fish_comparison_sp$author, levels = c("HBU","Dorner_2007"))
-# 
-# set.seed(3333)
-# model_sp <- caret::train(okoun ~ author + SL + author:SL, Stomach_fish_comparison_sp,
-#                       method = "lm",
-#                       trControl = trainControl(method= "repeatedcv",
-#                                                number = 10, 
-#                                                verboseIter = T,
-#                                                repeats = 10))
-# summary(model_sp)
-# model_sp
-# 
-# set.seed(3333)
-# model_sp2 <- caret::train(okoun ~ author + SL, Stomach_fish_comparison_sp,
-#                          method = "lm",
-#                          trControl = trainControl(method= "repeatedcv",
-#                                                   number = 10, 
-#                                                   verboseIter = T,
-#                                                   repeats = 10))
-# summary(model_sp2)
-# model_sp2
-# anova(model_sp$finalModel, model_sp2$finalModel)
+Stomach_percid_comparison_size <- Stomach_fish_comparison_size[sp_taxonomicorder == "Percids"]
+shapiro.test(Stomach_percid_comparison_size$ratio_prey)
+set.seed(3333)
+author_percid <- glm(data = Stomach_percid_comparison_size, formula = sqrt(ratio_prey) ~ SL * author, family = "gaussian")
+summary(author_percid)
+with(summary(author_percid), 1 - deviance/null.deviance)
+
+
+Stomach_Cyprinids_comparison_size <- Stomach_fish_comparison_size[sp_taxonomicorder == "Cyprinids"]
+shapiro.test(Stomach_Cyprinids_comparison_size$ratio_prey)
+set.seed(3333)
+author_Cyprinids <- glm(data = Stomach_Cyprinids_comparison_size, formula = ratio_prey ~ SL * author, family = "gaussian")
+summary(author_Cyprinids)
+with(summary(author_Cyprinids), 1 - deviance/null.deviance)
+
 #graphs
 #Figure 7####
 ggplot(Stomach_fish_comparison_size, aes(SL, sqrt(ratio_prey))) +
