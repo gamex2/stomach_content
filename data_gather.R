@@ -929,9 +929,9 @@ ggplot(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cyprinids", "Perci
   geom_jitter(width = 0.2, aes(color = author))+
   facet_wrap(~sp_taxonomicorder, scales = "free_y", ncol = 1) +
   geom_smooth(method='glm', formula= y~x, aes(color = author, fill = author), method.args = list(family = "gaussian"))+
-  stat_poly_eq(use_label(c("eq", "R2"))) +
-  scale_color_manual(values=c(rep("red3",1), rep("green4",1), rep("blue1", 1)))+
-  scale_fill_manual(values=c(rep("red3",1), rep("green4",1), rep("blue1", 1)))+
+  scale_fill_grey() +
+  scale_color_grey() +
+  ylim(0.1, 0.9)+
   labs(x="SL (mm)", y="PPR", fill = "Authors", color = "Authors")+
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
@@ -942,7 +942,7 @@ ggplot(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cyprinids", "Perci
         legend.title = element_text(size=28),
         legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.position="bottom")
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 ggplot(Stomach_fish_comparison_size[prey_sp %in% c("plotice", "jezdik", "candat", "okoun")], aes(SL, ratio_prey)) +
   geom_jitter(width = 0.2, aes(color = author))+
