@@ -156,6 +156,15 @@ Stomach_content_all <- Stomach_content_all %>%
 
 ggplot(Stomach_content_all, aes(x = SL)) + 
   geom_histogram(stat="count")
+Stomach_fish_count <- setDT(melt(Stomach_content_all[, .(ct_catchid, Year, candat, ouklej, 
+                                                                  okoun, plotice, jezdik, cejn, cejnek, kaprovitka, okounovitá)], 
+                                          id.vars = c("ct_catchid", "Year"), 
+                                          value.name = "prey_n"))
+Stomach_fish_count_sum <- aggregate(Stomach_fish_count$prey_n, by = list(fishid = Stomach_fish_count$ct_catchid, year = Stomach_fish_count$Year), FUN = sum)
+t25 <- Stomach_fish_count_sum%>%   #df1 is yor data frame
+  filter(x>0) %>%
+  group_by(year)%>%
+  tally()
 
 #fish in the stomach sp
 Stomach_fish_candat_melt_sp <- setDT(melt(Stomach_content_all[, .(ct_catchid, SL, Year, size_class, candat, ouklej, 
@@ -179,7 +188,7 @@ Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificnam
 Stomach_fish_candat_melt_sp$sp_name[Stomach_fish_candat_melt_sp$sp_scientificname == "Blicca bjoerkna"] <- "Silver bream"
 
 ggplot(Stomach_fish_candat_melt_sp, aes(x = prey_n)) + 
-  geom_histogram(stat="count")
+  geom_histogram()
 
 #prey per tt ####
 sum_tt_per <- Stomach_fish_candat_melt_sp[,.(prey_n = sum(prey_n)),
@@ -244,13 +253,13 @@ ggplot(sum_dec_x, aes(x = as.factor(Year), y = mpr, fill = Dataset)) +
   scale_fill_grey()+
   labs(x = "Year", y = "Mean prey per predator", fill = "Dataset")+
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 45, hjust =1.1, vjust = 1.05, face = "italic"),
+        axis.text.x = element_text(size = 28, hjust = 1, vjust = 1, angle = 45),
         axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 28),
-        axis.title.x = element_text(size = 28),
-        axis.title.y = element_text(size = 28),
-        legend.title = element_text(size = 28),
-        legend.text = element_text(size = 28))+
+        strip.text = element_text(size = 20),
+        axis.title.x = element_text(size = 36, face = "bold"),
+        axis.title.y = element_text(size = 36, face = "bold"),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
@@ -339,13 +348,13 @@ ggplot(sum_sp_dec_y[!sp_name %in% c("Percid","Cyprinid")], #Fig. 3
   stat_summary(fun = mean, geom = "point", shape = 20, size = 4, col = 'white', position = position_dodge(.9)) +
   labs(x = "Dataset", y = 'Mean N prey per Pikeperch')+
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 45, hjust =1.1, vjust = 1.05, face = "italic"),
+        axis.text.x = element_text(size = 28, hjust = 1, vjust = 1, angle = 45),
         axis.text.y = element_text(size = 28),
         strip.text = element_text(size = 28),
-        axis.title.x = element_text(size = 28),
-        axis.title.y = element_text(size = 28),
-        legend.title = element_text(size = 28),
-        legend.text = element_text(size = 28))+
+        axis.title.x = element_text(size = 36, face = "bold"),
+        axis.title.y = element_text(size = 36, face = "bold"),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
@@ -403,13 +412,13 @@ ggplot(sum_or_dec_y,
   stat_summary(fun = mean, geom = "point", shape = 20, size = 4, col = 'white', position = position_dodge(.9)) +
   labs(x = "Family", y = 'Mean N prey per Pikeperch')+
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 45, hjust =1.1, vjust = 1.05, face = "italic"),
+        axis.text.x = element_text(size = 28),
         axis.text.y = element_text(size = 28),
         strip.text = element_text(size = 28),
-        axis.title.x = element_text(size = 28),
-        axis.title.y = element_text(size = 28),
-        legend.title = element_text(size = 28),
-        legend.text = element_text(size = 28))+
+        axis.title.x = element_text(size = 36, face = "bold"),
+        axis.title.y = element_text(size = 36, face = "bold"),
+        legend.title = element_text(size=28),
+        legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
@@ -464,7 +473,7 @@ Stomach_fish_candat_size$Species[Stomach_fish_candat_size$sp_scientificname == "
 Stomach_fish_candat_size$Species[Stomach_fish_candat_size$sp_scientificname == "Blicca bjoerkna"] <- "Silver bream"
 Stomach_fish_candat_size$Species[is.na(Stomach_fish_candat_size$Species)] <- "Roach"
 Stomach_fish_candat_size$Species[Stomach_fish_candat_size$Species == "candat"] <- "Roach"
-
+# write.xlsx(Stomach_fish_candat_size, here::here('Stomach_fish_candat_size.xlsx'))
 
 ggplot(Stomach_fish_candat_size, aes(x = prey_size)) + 
   geom_histogram(stat="count")
@@ -516,11 +525,11 @@ set.seed(3333)
 # summary(mnb_size_r)
 # dfun(mnb_size_r)
 # with(summary(mnb_size_r), 1 - deviance/null.deviance)
-mqp_size_r <- glm(data = Stomach_fish_candat_size, formula = sqrt(ratio_prey) ~ SL + Dataset, family = "gaussian")
+mqp_size_r <- glm(data = Stomach_fish_candat_size, formula = prey_size ~ SL + Dataset, family = "quasipoisson")
 summary(mqp_size_r)
 dfun(mqp_size_r)
 with(summary(mqp_size_r), 1 - deviance/null.deviance)
-
+summary(glm.nb(formula = prey_size ~ SL + Dataset, data = Stomach_fish_candat_size))
 #percid
 # set.seed(3333)
 # mnb_size_r_p <- glm.nb(data = Stomach_percid_size, formula = ratio_prey ~ SL + Dataset)
@@ -640,20 +649,20 @@ summary(m4)
 #         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 #Figure 5####
-ggplot(Stomach_fish_candat_size, aes(SL, sqrt(ratio_prey))) +
+ggplot(Stomach_fish_candat_size, aes(SL, prey_size)) +
   geom_point(aes(colour = Dataset, shape = Species), size =3) +
   scale_shape_manual(values = c(11,17,18,19,3,4,7,9))+
-  geom_smooth(method='glm', formula= y~x, aes(color = Dataset, fill = Dataset), method.args = list(family = "gaussian"))+
+  geom_smooth(method='glm', formula= y~x, method.args = list(family = "quasipoisson"))+
+  stat_poly_eq(use_label(c("eq", "R2")), label.y = "top", label.x = "right", size = 10)+
   scale_fill_grey() +
   scale_color_grey() +
-  ylim(0.2, 0.75)+
-  labs(x="Pikeperch SL (mm)", y = "PPR")+
+  labs(x="Pikeperch standart lenght (SL) (mm)", y = "Prey standart lenght (SL) (mm)")+
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+        axis.text.x = element_text(size = 28, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
         strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 26),
-        axis.title.y = element_text(size = 26),
+        axis.title.x = element_text(size = 36, face = "bold"),
+        axis.title.y = element_text(size = 36, face = "bold"),
         legend.title = element_text(size=28),
         legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -662,7 +671,7 @@ ggplot(Stomach_fish_candat_size, aes(SL, sqrt(ratio_prey))) +
 Stomach_fish_candat_size %>%
   group_by(Dataset) %>%
   do({
-    mod = glm(ratio_prey ~ SL, data = ., family = "quasipoisson")
+    mod = glm(ratio_prey ~ SL, data = ., family = "gaussian")
     data.frame(Intercept = coef(mod)[1],
                Slope = coef(mod)[2])
   })
@@ -673,17 +682,18 @@ ggplot(Stomach_fish_candat_size, aes(SL, sqrt(ratio_prey))) +
   geom_point(aes(colour = Dataset, shape = Species), size =3) +
   scale_shape_manual(values = c(11,17,18,19,3,4,7,9))+
   facet_wrap(~sp_taxonomicorder, scales = "free_y", ncol = 1) +
-  geom_smooth(method='glm', formula= y~x, aes(color = Dataset, fill = Dataset), method.args = list(family = "gaussian"))+
+  geom_smooth(method='glm', aes(colour = Dataset, fill = Dataset), formula= y~x, method.args = list(family = "gaussian"))+
+  # stat_poly_eq(use_label(c("eq", "R2")), label.y = "top", label.x = "right", size = 10)+
   scale_fill_grey() +
   scale_color_grey() +
   ylim(0.2, 0.75)+
-  labs(x="Pikeperch SL (mm)", y = "PPR")+
+  labs(x="Pikeperch standart lenght (SL) (mm)", y = "Predator prey ratio (PPR)")+
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+        axis.text.x = element_text(size = 28, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
         strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 26),
-        axis.title.y = element_text(size = 26),
+        axis.title.x = element_text(size = 36, face = "bold"),
+        axis.title.y = element_text(size = 36, face = "bold"),
         legend.title = element_text(size=28),
         legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -931,17 +941,23 @@ ggplot(Stomach_fish_comparison_size[sp_taxonomicorder %in% c("Cyprinids", "Perci
   geom_smooth(method='glm', formula= y~x, aes(color = author, fill = author), method.args = list(family = "gaussian"))+
   scale_fill_grey() +
   scale_color_grey() +
-  ylim(0.1, 0.9)+
-  labs(x="SL (mm)", y="PPR", fill = "Authors", color = "Authors")+
+  ylim(0.1, 1)+
+  xlim(0, 800)+
+  labs(x="Pikeperch standart lenght (SL) (mm)", y = "Predator prey ratio (PPR)", color = "Authors", fill = "Authors")+
   theme(plot.title = element_text(size = 32, face = "bold"),
-        axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
+        axis.text.x = element_text(size = 28, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
         strip.text = element_text(size = 20),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 26),
+        axis.title.x = element_text(size = 36, face = "bold"),
+        axis.title.y = element_text(size = 36, face = "bold"),
         legend.title = element_text(size=28),
-        legend.text = element_text(size = 26, face = "italic"))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        legend.text = element_text(size = 26, face = "italic"),
+        legend.position = c(0.91, 0.33),
+legend.background = element_rect(linewidth=1, linetype="solid", 
+                                 colour ="black"))+
+  theme(panel.grid.major = element_line(color = "gray",
+                                        linewidth = 0.5,
+                                        linetype = 2), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 ggplot(Stomach_fish_comparison_size[prey_sp %in% c("plotice", "jezdik", "candat", "okoun")], aes(SL, ratio_prey)) +
@@ -1073,7 +1089,7 @@ ggplot(elec_candat_data, aes(y = Piper*100, x = Fiper,  colour = sp_name)) +
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 #electivity all####
-elec_lipno_data <- setDT(readxl::read_xlsx(here::here('Stomach.content.all.xlsx'), sheet = "fry"))
+elec_lipno_data <- setDT(readxl::read_xlsx(here::here('elec_lipno_data.xlsx')))
 elec_consumed_data <- elec_candat_data[!Year %in% c(1966, 1967, 1968, 1969, 1970),.(sp_name, Year, Piper)]
 elec_consumed_data$Species <- "candat"
 dc_elec_consumed_data <- dcast(elec_consumed_data, formula = Species + Year ~ sp_name, value.var = "Piper")
@@ -1165,10 +1181,10 @@ ggplot(elec_JacobsQ_melt[!Available == 2019], aes(x = as.factor(Available), y = 
   theme(plot.title = element_text(size = 32, face = "bold"),
         axis.text.x = element_text(size = 28, angle = 90, hjust =.1, vjust = .5),
         axis.text.y = element_text(size = 28),
-        strip.text = element_text(size = 26),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 20),
-        legend.title = element_text(size = 28),
+        strip.text = element_text(size = 28),
+        axis.title.x = element_text(size = 36, face = "bold"),
+        axis.title.y = element_text(size = 36, face = "bold"),
+        legend.title = element_text(size=28),
         legend.text = element_text(size = 26, face = "italic"))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_line(colour = "black"))
